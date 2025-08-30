@@ -7,8 +7,8 @@ package database
 
 import (
 	"context"
-	"database/sql"
-	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :exec
@@ -19,14 +19,14 @@ VALUES ($1, $2, $3, $4, $5, $6)
 type CreateUserParams struct {
 	TelegramID    int64
 	WalletAddress string
-	ReferrerID    sql.NullInt64
+	ReferrerID    pgtype.Int8
 	ReferralCode  string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.ExecContext(ctx, createUser,
+	_, err := q.db.Exec(ctx, createUser,
 		arg.TelegramID,
 		arg.WalletAddress,
 		arg.ReferrerID,
@@ -43,7 +43,7 @@ WHERE telegram_id = $1
 `
 
 func (q *Queries) GetReferralCode(ctx context.Context, telegramID int64) (string, error) {
-	row := q.db.QueryRowContext(ctx, getReferralCode, telegramID)
+	row := q.db.QueryRow(ctx, getReferralCode, telegramID)
 	var referral_code string
 	err := row.Scan(&referral_code)
 	return referral_code, err
@@ -54,26 +54,45 @@ SELECT COUNT(referrer_id) FROM users
 WHERE referrer_id = $1
 `
 
-func (q *Queries) GetReferralCount(ctx context.Context, referrerID sql.NullInt64) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getReferralCount, referrerID)
+func (q *Queries) GetReferralCount(ctx context.Context, referrerID pgtype.Int8) (int64, error) {
+	row := q.db.QueryRow(ctx, getReferralCount, referrerID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
+const getReferralData = `-- name: GetReferralData :one
+SELECT referralCode, referralCount, referralEarnings FROM getReferralData(telegramId => $1)
+`
+
+type GetReferralDataRow struct {
+	Referralcode     interface{}
+	Referralcount    pgtype.Int4
+	Referralearnings pgtype.Numeric
+}
+
+func (q *Queries) GetReferralData(ctx context.Context, telegramid int64) (GetReferralDataRow, error) {
+	row := q.db.QueryRow(ctx, getReferralData, telegramid)
+	var i GetReferralDataRow
+	err := row.Scan(&i.Referralcode, &i.Referralcount, &i.Referralearnings)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
-SELECT telegram_id, wallet_address, referrer_id, referral_code, created_at, updated_at FROM users
+SELECT telegram_id, wallet_address, referrer_id, referral_code, referrer_fee_percent, referral_earnings, created_at, updated_at FROM users
 WHERE telegram_id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, telegramID int64) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, telegramID)
+	row := q.db.QueryRow(ctx, getUser, telegramID)
 	var i User
 	err := row.Scan(
 		&i.TelegramID,
 		&i.WalletAddress,
 		&i.ReferrerID,
 		&i.ReferralCode,
+		&i.ReferrerFeePercent,
+		&i.ReferralEarnings,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -86,7 +105,7 @@ WHERE referral_code = $1
 `
 
 func (q *Queries) GetUserByRefCode(ctx context.Context, referralCode string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getUserByRefCode, referralCode)
+	row := q.db.QueryRow(ctx, getUserByRefCode, referralCode)
 	var telegram_id int64
 	err := row.Scan(&telegram_id)
 	return telegram_id, err
@@ -98,7 +117,7 @@ WHERE telegram_id = $1
 `
 
 func (q *Queries) GetWalletAddress(ctx context.Context, telegramID int64) (string, error) {
-	row := q.db.QueryRowContext(ctx, getWalletAddress, telegramID)
+	row := q.db.QueryRow(ctx, getWalletAddress, telegramID)
 	var wallet_address string
 	err := row.Scan(&wallet_address)
 	return wallet_address, err
@@ -109,7 +128,7 @@ SELECT EXISTS (SELECT 1 FROM users WHERE users.referral_code = $1 LIMIT 1)
 `
 
 func (q *Queries) IsExistingRefCode(ctx context.Context, referralCode string) (bool, error) {
-	row := q.db.QueryRowContext(ctx, isExistingRefCode, referralCode)
+	row := q.db.QueryRow(ctx, isExistingRefCode, referralCode)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
@@ -120,10 +139,24 @@ SELECT EXISTS (SELECT 1 FROM users WHERE users.telegram_id = $1 LIMIT 1)
 `
 
 func (q *Queries) IsExistingUser(ctx context.Context, telegramID int64) (bool, error) {
-	row := q.db.QueryRowContext(ctx, isExistingUser, telegramID)
+	row := q.db.QueryRow(ctx, isExistingUser, telegramID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const updateReferrerEarnings = `-- name: UpdateReferrerEarnings :exec
+SELECT updateReferrerEarnings(telegramId => $1, referrerEarnings => $2)
+`
+
+type UpdateReferrerEarningsParams struct {
+	Telegramid       int64
+	Referrerearnings pgtype.Numeric
+}
+
+func (q *Queries) UpdateReferrerEarnings(ctx context.Context, arg UpdateReferrerEarningsParams) error {
+	_, err := q.db.Exec(ctx, updateReferrerEarnings, arg.Telegramid, arg.Referrerearnings)
+	return err
 }
 
 const updateWallet = `-- name: UpdateWallet :exec
@@ -134,10 +167,10 @@ WHERE telegram_id = $1
 type UpdateWalletParams struct {
 	TelegramID    int64
 	WalletAddress string
-	UpdatedAt     time.Time
+	UpdatedAt     pgtype.Timestamp
 }
 
 func (q *Queries) UpdateWallet(ctx context.Context, arg UpdateWalletParams) error {
-	_, err := q.db.ExecContext(ctx, updateWallet, arg.TelegramID, arg.WalletAddress, arg.UpdatedAt)
+	_, err := q.db.Exec(ctx, updateWallet, arg.TelegramID, arg.WalletAddress, arg.UpdatedAt)
 	return err
 }

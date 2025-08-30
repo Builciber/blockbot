@@ -18,7 +18,7 @@ type ExportWalletRespBody struct {
 func (cfg *apiConfig) handlerExportPrivateKeyProceed(ctx context.Context, b *bot.Bot, update *models.Update) {
 	telegramID := update.CallbackQuery.From.ID
 	exportWalletResp := ExportWalletRespBody{}
-	err := WalletServiceCall("PUT", "http://localhost:8080/v1/export", cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &exportWalletResp)
+	err := WalletServiceCall("PUT", fmt.Sprintf("%s/v1/export", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &exportWalletResp)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,

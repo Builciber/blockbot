@@ -31,3 +31,9 @@ WHERE referrer_id = $1;
 -- name: UpdateWallet :exec
 UPDATE users SET wallet_address = $2, updated_at = $3
 WHERE telegram_id = $1;
+
+-- name: UpdateReferrerEarnings :exec
+SELECT updateReferrerEarnings(telegramId => $1, referrerEarnings => $2);
+
+-- name: GetReferralData :one
+SELECT referralCode, referralCount, referralEarnings FROM getReferralData(telegramId => $1);

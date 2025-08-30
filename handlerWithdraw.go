@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -16,7 +17,7 @@ type getBalanceRespBody struct {
 func (cfg *apiConfig) handlerWithdraw(ctx context.Context, b *bot.Bot, update *models.Update) {
 	telegramID := update.CallbackQuery.From.ID
 	getBalanceResp := getBalanceRespBody{}
-	err := WalletServiceCall("GET", "http://localhost:8080/v1/balance", cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &getBalanceResp)
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &getBalanceResp)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,

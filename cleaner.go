@@ -8,9 +8,9 @@ import (
 )
 
 func cleaner(ctx context.Context, interval time.Duration, intSeqMap map[chatID]*interactionSequence, mu *sync.RWMutex) {
-	log.Println("Starting interaction sequence cleaner")
 	ticker := time.NewTicker(interval)
 	tickerChan := ticker.C
+	log.Println("Started interaction sequence cleaner")
 	for {
 		select {
 		case <-tickerChan:

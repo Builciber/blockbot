@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"internal/database"
 	"log"
 	"time"
 
+	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type RecreateWalletRespBody struct {
@@ -19,7 +20,7 @@ type RecreateWalletRespBody struct {
 func (cfg *apiConfig) handlerRecreateWalletProceed(ctx context.Context, b *bot.Bot, update *models.Update) {
 	telegramID := update.CallbackQuery.From.ID
 	exportWalletResp := ExportWalletRespBody{}
-	err := WalletServiceCall("PUT", "http://localhost:8080/v1/export", cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &exportWalletResp)
+	err := WalletServiceCall("PUT", fmt.Sprintf("%s/v1/export", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &exportWalletResp)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -29,7 +30,7 @@ func (cfg *apiConfig) handlerRecreateWalletProceed(ctx context.Context, b *bot.B
 		return
 	}
 	recreateCallResp := RecreateWalletRespBody{}
-	err = WalletServiceCall("PUT", "http://localhost:8080/v1/recreate", cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &recreateCallResp)
+	err = WalletServiceCall("PUT", fmt.Sprintf("%s/v1/recreate", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &recreateCallResp)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -38,11 +39,12 @@ func (cfg *apiConfig) handlerRecreateWalletProceed(ctx context.Context, b *bot.B
 		log.Println(err.Error())
 		return
 	}
-	err = cfg.DB.UpdateWallet(ctx, database.UpdateWalletParams{
+	updateWalletParams := database.UpdateWalletParams{
 		TelegramID:    telegramID,
 		WalletAddress: recreateCallResp.WalletAddress,
-		UpdatedAt:     time.Now(),
-	})
+		UpdatedAt:     pgtype.Timestamp{Time: time.Now(), Valid: true},
+	}
+	err = cfg.recreateWalletTx(ctx, updateWalletParams, telegramID)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -85,4 +87,22 @@ func (cfg *apiConfig) handlerRecreateWallet(ctx context.Context, b *bot.Bot, upd
 		log.Println(err.Error())
 		return
 	}
+}
+
+func (cfg *apiConfig) recreateWalletTx(ctx context.Context, updateWalletParams database.UpdateWalletParams, telegramId int64) error {
+	tx, err := cfg.dbConn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := cfg.DB.WithTx(tx)
+	err = qtx.UpdateWallet(ctx, updateWalletParams)
+	if err != nil {
+		return err
+	}
+	err = qtx.DeleteUserPositions(ctx, telegramId)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

@@ -10,7 +10,8 @@ import (
 )
 
 func (cfg *apiConfig) handlerHome(ctx context.Context, b *bot.Bot, update *models.Update) {
-	walletAddress, err := cfg.DB.GetWalletAddress(ctx, update.Message.From.ID)
+	getBalanceResp := getBalanceRespBody{}
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: update.Message.From.ID}, &getBalanceResp)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -19,22 +20,12 @@ func (cfg *apiConfig) handlerHome(ctx context.Context, b *bot.Bot, update *model
 		log.Println(err.Error())
 		return
 	}
-	keyboard := &models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{
-			{
-				{Text: "Wallet 💼", CallbackData: "home_wallet"},
-			}, {
-				{Text: "Referral 👥", CallbackData: "home_referral"},
-			}, {
-				{Text: "Pin 📌", CallbackData: "home_pin"},
-			},
-		},
-	}
+	walletBalance := getBalanceResp.Balance
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		ParseMode:   models.ParseModeMarkdown,
-		Text:        fmt.Sprintf("*Welcome to BlockBot*\nMonad's most powerful telegram trading bot\\. Built with speed, security and YOU in mind\n\nBelow is your newly generated trading wallet's address\\. To start trading, tap the address to copy it then send ETH to it:\n\n`%s`", walletAddress),
-		ReplyMarkup: keyboard,
+		Text:        generateHomeMessage(walletBalance),
+		ReplyMarkup: homeKeyboard,
 	})
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -73,5 +64,59 @@ func (cfg *apiConfig) handlerHomeCallback(ctx context.Context, b *bot.Bot, updat
 		cfg.handlerReferralButton(ctx, b, update)
 	case "home_pin":
 		handlerPinButton(ctx, b, update)
+	case "home_settings":
+		cfg.handlerSettingsButton(ctx, b, update)
+	case "home_refresh":
+		cfg.handlerHomeRefresh(ctx, b, update)
+	case "home_portfolio":
+		cfg.handlerManagePositions(ctx, b, update)
+	case "home_buy":
+		cfg.handlerHomeBuy(ctx, b, update)
+	case "home_buy_close":
+		cfg.handlerCloseButton(ctx, b, update)
+	}
+}
+
+func (cfg *apiConfig) handlerHomeBuy(ctx context.Context, b *bot.Bot, update *models.Update) {
+	keyboard := &models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "Close", CallbackData: "home_buy_close"},
+			},
+		},
+	}
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
+		ParseMode:   models.ParseModeMarkdown,
+		Text:        "To buy a token, send it's name, symbol or token address in chat",
+		ReplyMarkup: keyboard,
+	})
+}
+
+func (cfg *apiConfig) handlerHomeButton(ctx context.Context, b *bot.Bot, update *models.Update) {
+	getBalanceResp := getBalanceRespBody{}
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: update.CallbackQuery.From.ID}, &getBalanceResp)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	walletBalance := getBalanceResp.Balance
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
+		ParseMode:   models.ParseModeMarkdown,
+		Text:        generateHomeMessage(walletBalance),
+		ReplyMarkup: homeKeyboard,
+	})
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
 	}
 }

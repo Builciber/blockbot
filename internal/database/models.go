@@ -5,15 +5,59 @@
 package database
 
 import (
-	"database/sql"
-	"time"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Position struct {
+	Trader           int64
+	TokenAddress     string
+	TotalMonCost     pgtype.Numeric
+	TotalTokenAmount pgtype.Numeric
+	IsHidden         bool
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+}
+
+type PrivateBetaTester struct {
+	TelegramUsername string
+}
+
+type Setting struct {
+	TelegramID      int64
+	BuySlippage     int16
+	SellSlippage    int16
+	MaxPriceImpact  int16
+	PriorityFee     string
+	AutoBuy         bool
+	AutoBuyAmount   pgtype.Numeric
+	BuyButtonLeft   pgtype.Numeric
+	BuyButtonRight  pgtype.Numeric
+	SellButtonLeft  int16
+	SellButtonRight int16
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+}
+
+type Transaction struct {
+	Trader             pgtype.Int8
+	WalletAddress      string
+	FromToken          string
+	ToToken            string
+	FromAmount         pgtype.Numeric
+	ToAmount           pgtype.Numeric
+	TxHash             string
+	TradeUnixTimestamp pgtype.Timestamp
+	WebhookEventID     pgtype.Text
+	CreatedAt          pgtype.Timestamp
+}
+
 type User struct {
-	TelegramID    int64
-	WalletAddress string
-	ReferrerID    sql.NullInt64
-	ReferralCode  string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	TelegramID         int64
+	WalletAddress      string
+	ReferrerID         pgtype.Int8
+	ReferralCode       string
+	ReferrerFeePercent int16
+	ReferralEarnings   pgtype.Numeric
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
 }

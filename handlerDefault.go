@@ -14,8 +14,14 @@ func (cfg *apiConfig) handlerDefault(ctx context.Context, b *bot.Bot, update *mo
 	if update.Message.Text == "" {
 		return
 	}
+	if update.Message.ReplyToMessage == nil {
+		cfg.handlerBuyCommand(ctx, b, update.Message)
+		return
+	}
 	chatId := chatID(update.Message.Chat.ID)
-	intSeq, ok := cfg.intSeqMap[chatId]
+	cfg.mu.RLock()
+	intSeq, ok := cfg.intSeqMap[chatID(chatId)]
+	cfg.mu.RUnlock()
 	if !ok {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    update.Message.Chat.ID,
