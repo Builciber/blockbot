@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -128,5 +129,7 @@ func main() {
 
 	go cleaner(ctx, 3*time.Hour, cfg.intSeqMap, cfg.mu)
 
-	b.Start(ctx)
+	go b.StartWebhook(ctx)
+
+	http.ListenAndServe("0.0.0.0:8080", b.WebhookHandler())
 }
