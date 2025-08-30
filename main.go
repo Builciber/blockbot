@@ -12,6 +12,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/Builciber/blockbot/internal/database"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +27,6 @@ type apiConfig struct {
 	DB             *database.Queries
 	dbConn         *pgxpool.Pool
 	intSeqMap      map[chatID]*interactionSequence
-	usersSettings  map[int64]*database.Setting
 	usersBalances  map[telegramID]*userBalances
 	mu             *sync.RWMutex
 	userBalancesMu *sync.RWMutex
@@ -59,6 +59,8 @@ func main() {
 	apiKey := os.Getenv("BWS_API_KEY")
 	bwsOrigin := os.Getenv("BWS_ORIGIN")
 	monorailAppId := os.Getenv("MONORAIL_APP_ID")
+	tgWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
+	serverUrl := os.Getenv("SERVER_URL")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	db, err := pgxpool.New(ctx, dbURL)
@@ -66,14 +68,6 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	dbQueries := database.New(db)
-	usersSettings := make(map[int64]*database.Setting)
-	settings, err := dbQueries.GetUsersSettings(ctx)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-	for _, setting := range settings {
-		usersSettings[setting.TelegramID] = &setting
-	}
 	intSeqMap := make(map[chatID]*interactionSequence)
 	usersBalances := make(map[telegramID]*userBalances)
 
@@ -88,7 +82,6 @@ func main() {
 		dbConn:         db,
 		intSeqMap:      intSeqMap,
 		mu:             mu,
-		usersSettings:  usersSettings,
 		usersBalances:  usersBalances,
 		userBalancesMu: usersBalancesMu,
 	}
@@ -106,7 +99,8 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
-		bot.WithWorkers(10),
+		bot.WithWebhookSecretToken(tgWebhookSecret),
+		bot.WithServerURL(serverUrl),
 	}
 
 	b, err := bot.New(cfg.botToken, opts...)
@@ -128,8 +122,20 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "mode_", bot.MatchTypePrefix, cfg.modeViewCallback)
 
 	go cleaner(ctx, 3*time.Hour, cfg.intSeqMap, cfg.mu)
+	mux := chi.NewRouter()
+	mux.Post("/webhooks/telegram", b.WebhookHandler())
+	b.SetWebhook(ctx, &bot.SetWebhookParams{
+		URL:            "https://blockbot-7pvmq.ondigitalocean.app/webhooks/telegram",
+		SecretToken:    tgWebhookSecret,
+		MaxConnections: 70,
+	})
 
 	go b.StartWebhook(ctx)
 
-	http.ListenAndServe("0.0.0.0:8080", b.WebhookHandler())
+	server := http.Server{
+		Addr:    "0.0.0.0:8080",
+		Handler: mux,
+	}
+	log.Println("Started server on localhost at port 8080")
+	server.ListenAndServe()
 }
