@@ -8,11 +8,20 @@ import (
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/jackc/pgx/v5"
 )
 
 func (cfg *apiConfig) handlerWalletCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
 	telegramID := update.Message.From.ID
 	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramID)
+	if err == pgx.ErrNoRows {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Forbidden action",
+		})
+		log.Println(err.Error())
+		return
+	}
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,

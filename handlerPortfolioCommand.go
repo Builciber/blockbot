@@ -15,6 +15,7 @@ import (
 	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -22,9 +23,17 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 	msg := update.Message
 	telegramId := msg.From.ID
 	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramId)
+	if err == pgx.ErrNoRows {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Forbidden action",
+		})
+		log.Println(err.Error())
+		return
+	}
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())

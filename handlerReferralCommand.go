@@ -25,7 +25,7 @@ func (cfg *apiConfig) handlerReferralCommand(ctx context.Context, b *bot.Bot, up
 	if !ok {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
+			Text:   "Forbidden action",
 		})
 		log.Println("failed to parse referral code as string")
 		return

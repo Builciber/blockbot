@@ -12,6 +12,14 @@ import (
 func (cfg *apiConfig) handlerHome(ctx context.Context, b *bot.Bot, update *models.Update) {
 	getBalanceResp := getBalanceRespBody{}
 	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: update.Message.From.ID}, &getBalanceResp)
+	if err != nil && err.Error() == "User does not exist" {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Forbidden action",
+		})
+		log.Println(err.Error())
+		return
+	}
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
