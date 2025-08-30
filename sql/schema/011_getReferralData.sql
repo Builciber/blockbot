@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION getReferralData(telegramId BIGINT, OUT referralCode CHAR(8), OUT referralCount INTEGER, OUT referralEarnings NUMERIC)
 AS $$
 DECLARE
@@ -18,6 +19,7 @@ BEGIN
     referralEarnings = userInfo.referral_earnings;
 END;
 $$ LANGUAGE PLPGSQL;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP FUNCTION IF EXISTS getReferralData;

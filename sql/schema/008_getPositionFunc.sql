@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION getPosition(traderId BIGINT, tokenAddress CHAR(42)) RETURNS positions AS $$
 DECLARE
     position positions%rowtype;
@@ -12,7 +13,9 @@ BEGIN
     ELSE
         return position;
     END IF;
-END $$ LANGUAGE plpgsql;
+END;
+$$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP FUNCTION IF EXISTS getPosition;

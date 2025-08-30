@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 CREATE or REPLACE function getTradeData(telegramId BIGINT, OUT buySlippage SMALLINT, OUT sellSlippage SMALLINT, OUT maxPriceImpact SMALLINT, OUT referrerFeePercent SMALLINT, OUT referrerAddress CHAR(42), OUT priorityFee VARCHAR(10))
 AS $$
 DECLARE
@@ -27,6 +28,7 @@ BEGIN
 	priorityFee = userSettings.priority_fee;
 END;
 $$ LANGUAGE PLPGSQL;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP FUNCTION IF EXISTS getTradeData;

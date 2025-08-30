@@ -1,5 +1,7 @@
 -- +goose Up
-CREATE OR REPLACE FUNCTION mutatePosition(traderId BIGINT, tokenAddress CHAR(42), mon_cost NUMERIC, token_amount NUMERIC) RETURNS VOID AS $$
+-- +goose StatementBegin
+CREATE OR REPLACE FUNCTION mutatePosition(traderId BIGINT, tokenAddress CHAR(42), mon_cost NUMERIC, token_amount NUMERIC) RETURNS VOID AS
+$$
 DECLARE
     position positions%rowtype;
 BEGIN
@@ -14,7 +16,9 @@ BEGIN
         UPDATE positions SET total_mon_cost = total_mon_cost + mon_cost, total_token_amount = total_token_amount + token_amount, updated_at = NOW()::TIMESTAMP
         WHERE trader = traderId AND token_address = tokenAddress;
     END IF;
-END $$ LANGUAGE plpgsql;
+END;
+$$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP FUNCTION IF EXISTS mutatePosition;

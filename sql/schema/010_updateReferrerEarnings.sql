@@ -1,4 +1,5 @@
 -- +goose Up
+-- +goose StatementBegin
 CREATE OR REPLACE FUNCTION updateReferrerEarnings(telegramId BIGINT, referrerEarnings NUMERIC) RETURNS VOID AS $$
 DECLARE
     userInfo users%rowtype;
@@ -11,7 +12,9 @@ BEGIN
         UPDATE users SET referral_earnings = referral_earnings + referrerEarnings, updated_at = NOW()::TIMESTAMP
         WHERE telegram_id = userInfo.referrer_id;
     END IF;
-END $$ LANGUAGE plpgsql;
+END;
+$$ LANGUAGE plpgsql;
+-- +goose StatementEnd
 
 -- +goose Down
 DROP FUNCTION IF EXISTS updateReferrerEarnings;
