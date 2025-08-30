@@ -124,11 +124,14 @@ func main() {
 	go cleaner(ctx, 3*time.Hour, cfg.intSeqMap, cfg.mu)
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
-	b.SetWebhook(ctx, &bot.SetWebhookParams{
+	_, err = b.SetWebhook(ctx, &bot.SetWebhookParams{
 		URL:            "https://blockbot-7pvmq.ondigitalocean.app/webhooks/telegram",
 		SecretToken:    tgWebhookSecret,
 		MaxConnections: 70,
 	})
+	if err != nil {
+		log.Fatal("failed to set up telegram webhook: ", err.Error())
+	}
 
 	go b.StartWebhook(ctx)
 
