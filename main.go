@@ -60,7 +60,6 @@ func main() {
 	bwsOrigin := os.Getenv("BWS_ORIGIN")
 	monorailAppId := os.Getenv("MONORAIL_APP_ID")
 	tgWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
-	serverUrl := os.Getenv("SERVER_URL")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	db, err := pgxpool.New(ctx, dbURL)
@@ -100,7 +99,6 @@ func main() {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
 		bot.WithWebhookSecretToken(tgWebhookSecret),
-		bot.WithServerURL(serverUrl),
 	}
 
 	b, err := bot.New(cfg.botToken, opts...)
