@@ -43,7 +43,7 @@ func (cfg *apiConfig) handlerStart(ctx context.Context, b *bot.Bot, update *mode
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    update.Message.Chat.ID,
 			ParseMode: models.ParseModeMarkdown,
-			Text:      `*Access Denied*\.\n\nYou are not a whitelisted private Beta tester\. Please come back when I'm open to the public\.`,
+			Text:      "*Access Denied*\\.\n\nYou are not a whitelisted private Beta tester\\. Please come back when I'm open to the public\\.",
 		})
 		return
 	}
