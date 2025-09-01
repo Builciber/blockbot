@@ -70,4 +70,13 @@ func (cfg *apiConfig) handlerBuyCommandBuyRight(ctx context.Context, b *bot.Bot,
 		ChatID:     update.CallbackQuery.Message.Message.Chat.ID,
 		MessageIDs: []int{processingMsg.ID, executingMsg.ID},
 	})
+	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramId)
+	if err != nil {
+		return
+	}
+	tokenInfo, err := cfg.findToken(tokenAddress, walletAddress)
+	if err != nil {
+		return
+	}
+	cfg.displayBoughtToken(ctx, b, msg, tokenInfo, walletAddress)
 }

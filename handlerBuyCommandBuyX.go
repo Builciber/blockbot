@@ -146,4 +146,13 @@ func (cfg *apiConfig) handlerProcessBuyCommandBuyX(ctx context.Context, b *bot.B
 		ChatID:     msg.Chat.ID,
 		MessageIDs: []int{processingMsg.ID, executingMsg.ID},
 	})
+	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramId)
+	if err != nil {
+		return
+	}
+	tokenInfo, err := cfg.findToken(tokenAddress, walletAddress)
+	if err != nil {
+		return
+	}
+	cfg.displayBoughtToken(ctx, b, msg, tokenInfo, walletAddress)
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"math/big"
 	"net/http"
@@ -74,4 +75,26 @@ func getTokenUSDPrice(monPerToken *big.Float) (*big.Float, error) {
 	tokenPrice, _ := new(big.Float).SetString(monPrice.Price)
 	tokenPrice.Mul(tokenPrice, monPerToken)
 	return tokenPrice, nil
+}
+
+func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBalancesResp, error) {
+	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/tokens?find=%s&address=%s", tokenAddress, walletAddress)
+	res, err := http.Get(url)
+	if err != nil {
+		return monorailBalancesResp{}, err
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return monorailBalancesResp{}, err
+	}
+	res.Body.Close()
+	if res.StatusCode > 299 {
+		return monorailBalancesResp{}, fmt.Errorf("non 2xx status code returned")
+	}
+	monorailRespBody := []monorailBalancesResp{}
+	err = json.Unmarshal(body, &monorailRespBody)
+	if err != nil {
+		return monorailBalancesResp{}, err
+	}
+	return monorailRespBody[0], nil
 }
