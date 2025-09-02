@@ -30,7 +30,7 @@ func (cfg *apiConfig) handlerStart(ctx context.Context, b *bot.Bot, update *mode
 		log.Println(1)
 		return
 	}
-	isBetaTester, err := cfg.DB.IsBetaTester(ctx, update.Message.From.Username)
+	isBetaTester, err := cfg.DB.IsBetaTester(ctx, strings.ToLower(update.Message.From.Username))
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
