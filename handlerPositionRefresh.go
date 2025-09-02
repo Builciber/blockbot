@@ -173,7 +173,7 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		}
 		usdValue := new(big.Float).Mul(tokenAmount, usdPerToken)
 		usdValueFormatted = strings.Replace(usdValue.Text(byte('f'), 2), ".", "\\.", 1)
-		token.UsdPerToken = usdPerToken.Text(byte('f'), 2)
+		token.UsdPerToken = usdPerToken.Text(byte('f'), -1)
 	}
 	if token.MonValue != "" {
 		if val, _ := strconv.ParseFloat(token.MonValue, 64); val != 0 {

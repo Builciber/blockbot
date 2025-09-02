@@ -72,7 +72,10 @@ func getTokenUSDPrice(monPerToken *big.Float) (*big.Float, error) {
 	if err != nil {
 		return nil, err
 	}
-	tokenPrice, _ := new(big.Float).SetString(monPrice.Price)
+	tokenPrice, ok := new(big.Float).SetString(monPrice.Price)
+	if !ok {
+		return nil, fmt.Errorf("mon price unavailable")
+	}
 	tokenPrice.Mul(tokenPrice, monPerToken)
 	return tokenPrice, nil
 }
