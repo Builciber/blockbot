@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -137,13 +138,14 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		keyboard = &models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{
-					{Text: "Close ❌", CallbackData: "buy_close"},
-				}, {
-					{Text: token.Symbol, CallbackData: "buy_symbol"},
+					{Text: "Close", CallbackData: "buy_close"},
 				},
 			},
 		}
 		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *0\\.00 MON*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.Address, buyButtonRight, balanceFormatted, token.Address)
+		if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
+			inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
+		}
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      msg.Chat.ID,
 			ParseMode:   models.ParseModeMarkdown,
@@ -155,6 +157,9 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 	monPriceFormatted := strings.Replace(tokenPriceAsFloat.Text('f', 6), ".", "\\.", 1)
 	compoundImpactFormatted := strings.Replace(compoundImpactAsFloat.Text('f', 3), ".", "\\.", 1)
 	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *%s MON*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.Address, monPriceFormatted, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.Address)
+	if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
+		inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
+	}
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      msg.Chat.ID,
 		ParseMode:   models.ParseModeMarkdown,
@@ -285,7 +290,7 @@ func (cfg *apiConfig) displayBoughtToken(ctx context.Context, b *bot.Bot, msg *m
 	monBalanceFormatted := strings.Replace(monBalanceAsFloat.Text(byte('f'), 4), ".", "\\.", 1)
 	totalPortfolioValueAsFloat, _ := new(big.Float).SetString(totalPortfolioValue.Value)
 	totalPortfolioValueFormatted := strings.Replace(totalPortfolioValueAsFloat.Text(byte('f'), 4), ".", "\\.", 1)
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nPrice: *%s MON* \n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\nTotal Portfolio Value: *$%s*\n\n[*View Token on Explorer*](https://testnet.monadexplorer.com/token/%s)", token.Symbol, token.Name, token.Address, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, priceFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, totalPortfolioValueFormatted, token.Address)
+	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nPrice: *%s MON* \n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\nTotal Portfolio Value: *$%s*\n\n[*View Token on Explorer*](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_TestBlockBot?start=st_%s)", token.Symbol, token.Name, token.Address, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, priceFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, totalPortfolioValueFormatted, token.Address, token.Address)
 	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{

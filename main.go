@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -106,11 +105,13 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypePrefix, cfg.handlerStart)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypePrefix, cfg.handlerStartParamCallback)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/home", bot.MatchTypeExact, cfg.handlerHome)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/wallet", bot.MatchTypeExact, cfg.handlerWalletCommand)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/referrals", bot.MatchTypeExact, cfg.handlerReferralCommand)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/portfolio", bot.MatchTypeExact, cfg.handlerPortfolioCommand)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/settings", bot.MatchTypeExact, cfg.handlerSettingsCommand)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/changemode", bot.MatchTypeExact, cfg.handlerChangeMode)
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "home_", bot.MatchTypePrefix, cfg.handlerHomeCallback)
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "wallet_", bot.MatchTypePrefix, cfg.walletViewCallback)
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "settings_", bot.MatchTypePrefix, cfg.settingsViewCallback)
@@ -118,25 +119,18 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "positions_", bot.MatchTypePrefix, cfg.positionsViewCallback)
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "quickView_", bot.MatchTypePrefix, cfg.quickViewCallback)
 	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "mode_", bot.MatchTypePrefix, cfg.modeViewCallback)
+	b.RegisterHandler(bot.HandlerTypeCallbackQueryData, "change_", bot.MatchTypePrefix, cfg.changeModeViewCallback)
 
 	go cleaner(ctx, 3*time.Hour, cfg.intSeqMap, cfg.mu)
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
-	/*_, err = b.SetWebhook(ctx, &bot.SetWebhookParams{
-		URL:            "https://blockbot-7pvmq.ondigitalocean.app/webhooks/telegram",
-		SecretToken:    tgWebhookSecret,
-		MaxConnections: 70,
-	})
-	if err != nil {
-		log.Fatal("failed to set up telegram webhook: ", err.Error())
-	}*/
 
-	go b.StartWebhook(ctx)
+	b.Start(ctx)
 
-	server := http.Server{
+	/*server := http.Server{
 		Addr:    "0.0.0.0:8080",
 		Handler: mux,
 	}
 	log.Println("Started server on localhost at port 8080")
-	server.ListenAndServe()
+	server.ListenAndServe()*/
 }

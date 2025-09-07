@@ -101,3 +101,25 @@ func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBal
 	}
 	return monorailRespBody[0], nil
 }
+
+func retrieveRefCode(link string) string {
+	var refStartIndex int
+	for i := range link {
+		if link[i] == 'r' && (i+1 < len(link) && link[i+1] == '_') {
+			refStartIndex = i + 2
+			break
+		}
+	}
+	if refStartIndex >= len(link) {
+		return ""
+	}
+	refEndIndex := refStartIndex
+	for i := refStartIndex + 1; i < len(link); i++ {
+		if link[i] != '_' {
+			refEndIndex++
+		} else {
+			break
+		}
+	}
+	return link[refStartIndex : refEndIndex+1]
+}

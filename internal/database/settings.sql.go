@@ -325,3 +325,27 @@ func (q *Queries) UpdateSellSlippage(ctx context.Context, arg UpdateSellSlippage
 	_, err := q.db.Exec(ctx, updateSellSlippage, arg.TelegramID, arg.SellSlippage, arg.UpdatedAt)
 	return err
 }
+
+const updateUserTradeSettings = `-- name: UpdateUserTradeSettings :exec
+UPDATE settings SET buy_slippage = $2, sell_slippage = $3, max_price_impact = $4, priority_fee = $5, updated_at = NOW()::TIMESTAMP
+WHERE telegram_id = $1
+`
+
+type UpdateUserTradeSettingsParams struct {
+	TelegramID     int64
+	BuySlippage    int16
+	SellSlippage   int16
+	MaxPriceImpact int16
+	PriorityFee    string
+}
+
+func (q *Queries) UpdateUserTradeSettings(ctx context.Context, arg UpdateUserTradeSettingsParams) error {
+	_, err := q.db.Exec(ctx, updateUserTradeSettings,
+		arg.TelegramID,
+		arg.BuySlippage,
+		arg.SellSlippage,
+		arg.MaxPriceImpact,
+		arg.PriorityFee,
+	)
+	return err
+}

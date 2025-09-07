@@ -18,6 +18,30 @@ import (
 func (cfg *apiConfig) handlerBotModeDegen(ctx context.Context, b *bot.Bot, update *models.Update) {
 	defer cfg.endInteraction(update.CallbackQuery.Message.Message)
 	telegramID := update.CallbackQuery.From.ID
+	cfg.mu.RLock()
+	intSeq := cfg.intSeqMap[chatID(update.CallbackQuery.Message.Message.Chat.ID)]
+	cfg.mu.RUnlock()
+	var referrerID pgtype.Int8
+	slice := strings.Split(intSeq.retValues[0], " ")
+	if len(slice) == 2 {
+		userTGID, err := cfg.DB.GetUserByRefCode(ctx, retrieveRefCode(slice[1]))
+		if err != nil && err == pgx.ErrNoRows {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+				Text:   "invalid referral code",
+			})
+			return
+		}
+		if err != nil {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+				Text:   "something went wrong, please try again",
+			})
+			log.Println(err.Error())
+			return
+		}
+		referrerID = pgtype.Int8{Int64: userTGID, Valid: true}
+	}
 	resp := createWalletRespBody{}
 	err := WalletServiceCall("POST", fmt.Sprintf("%s/v1/create", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramID}, &resp)
 	if err != nil {
@@ -45,25 +69,6 @@ func (cfg *apiConfig) handlerBotModeDegen(ctx context.Context, b *bot.Bot, updat
 			continue
 		}
 		break
-	}
-	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(update.CallbackQuery.Message.Message.Chat.ID)]
-	cfg.mu.RUnlock()
-	var referrerID pgtype.Int8
-	slice := strings.Split(intSeq.retValues[0], " ")
-	if len(slice) == 2 {
-		userTGID, err := cfg.DB.GetUserByRefCode(ctx, strings.TrimPrefix(slice[1], "r_"))
-		if err != nil && err == pgx.ErrNoRows {
-			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-				Text:   "Something went wrong, please try again",
-			})
-			log.Println(err.Error())
-			return
-		}
-		if userTGID > 0 {
-			referrerID = pgtype.Int8{Int64: userTGID, Valid: true}
-		}
 	}
 
 	creationTime := time.Now()
@@ -99,7 +104,7 @@ func (cfg *apiConfig) handlerBotModeDegen(ctx context.Context, b *bot.Bot, updat
 		log.Println(err.Error())
 		return
 	}
-	responseText := fmt.Sprintf("⚡ Degen Mode locked in\\.\nI see you like things super fast\\. Respect\\. 🫡\n\nWe’ve tuned your engine for max performance:\n– Slippage: 15%%\n– Maximimum Acceptable Price Impact: 25%%\n– Transaction Priority: Turbo 🚀\n\nWant to tweak any of these later?\nYou can always tweak any of these in Settings\\.\n\nAll systems are a go, your wallet is ready\\.\nYou’re now equipped to trade like a savage\\. To start trading, tap the address to copy it then send MON to it: \n\n`%s`", resp.WalletAddress)
+	responseText := fmt.Sprintf("⚡ Degen Mode locked in\\.\nI see you like things super fast\\. Respect\\. 🫡\n\nWe’ve tuned your engine for max performance:\n– Slippage: 15%%\n– Maximimum Acceptable Price Impact: 25%%\n– Transaction Priority: Turbo 🚀\n\nWant to tweak any of these later?\nYou can always tweak any of these individually via `/settings` or as a group via the `/changemode` command\\.\n\nAll systems are a go, your wallet is ready\\.\nYou’re now equipped to trade like a savage\\. To start trading, tap the address to copy it then send MON to it: \n\n`%s`", resp.WalletAddress)
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		ParseMode:   models.ParseModeMarkdown,
@@ -118,4 +123,15 @@ func (cfg *apiConfig) handlerBotModeDegen(ctx context.Context, b *bot.Bot, updat
 		ChatID:    update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID: update.CallbackQuery.Message.Message.ID,
 	})
+	found := strings.Contains(intSeq.retValues[0], "_ca_")
+	if found {
+		tokenAddress := strings.Split(intSeq.retValues[0], "_ca_")[1][0:42]
+		inputs := sharedTokenAddressFuncInputs{
+			telegramId:   telegramID,
+			chatId:       update.CallbackQuery.Message.Message.Chat.ID,
+			tokenAddress: tokenAddress,
+		}
+		cfg.handleSharedTokenAddress(ctx, b, inputs)
+		return
+	}
 }

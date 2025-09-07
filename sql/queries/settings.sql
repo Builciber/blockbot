@@ -55,3 +55,7 @@ SELECT buySlippage, sellSlippage, maxPriceImpact, referrerFeePercent, referrerAd
 -- name: GetBuySellButtons :one
 SELECT buy_button_left, buy_button_right, sell_button_left, sell_button_right FROM settings
 WHERE telegram_id = $1;
+
+-- name: UpdateUserTradeSettings :exec
+UPDATE settings SET buy_slippage = $2, sell_slippage = $3, max_price_impact = $4, priority_fee = $5, updated_at = NOW()::TIMESTAMP
+WHERE telegram_id = $1;
