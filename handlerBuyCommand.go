@@ -21,13 +21,22 @@ import (
 func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *models.Message) {
 	telegramID := msg.From.ID
 	tokenIdentifier := msg.Text
-	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramID)
+	params, err := cfg.DB.GetBuyCommandParams(ctx, telegramID)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: msg.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())
+		return
+	}
+	walletAddress, ok := params.Walletaddress.(string)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println("Failed to parse wallet address as string")
 		return
 	}
 	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/tokens?find=%s&address=%s", tokenIdentifier, walletAddress)
@@ -96,7 +105,12 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		return
 	}
 	token := monorailRespBody[0]
-	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramID)
+	// Auto buy if enabled
+	if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); ok && params.Autobuyenabled.Bool {
+		cfg.handlerAutoBuy(ctx, b, msg, params, token)
+		return
+	}
+	compoundImpact, balance, err := cfg.getCompoundImpactAndMonBalance(telegramID, pgNumericToString(params.BuyButtonRight), token.Address)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: msg.Chat.ID,
@@ -105,16 +119,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		log.Println(err.Error())
 		return
 	}
-	compoundImpact, balance, err := cfg.getCompoundImpactAndMonBalance(telegramID, pgNumericToString(buySellButtons.BuyButtonRight), token.Address)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	buyButtonRight := strings.Replace(pgNumericToString(buySellButtons.BuyButtonRight), ".", "\\.", 1)
+	buyButtonRight := strings.Replace(pgNumericToString(params.BuyButtonRight), ".", "\\.", 1)
 	keyboard := &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{
@@ -122,8 +127,8 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 			}, {
 				{Text: token.Symbol, CallbackData: "buy_symbol"},
 			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "buy_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "buy_buyRight"},
+				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(params.BuyButtonLeft)), CallbackData: "buy_buyLeft"},
+				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(params.BuyButtonRight)), CallbackData: "buy_buyRight"},
 				{Text: "Buy X MON", CallbackData: "buy_buyX"},
 			}, {
 				{Text: "Refresh ⟳", CallbackData: "buy_refresh"},
@@ -300,31 +305,12 @@ func (cfg *apiConfig) displayBoughtToken(ctx context.Context, b *bot.Bot, msg *m
 		log.Println(err.Error())
 		return
 	}
-	keyboard := &models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{
-			{
-				{Text: "Home 🏠︎", CallbackData: "quickView_home"},
-				{Text: "Close ❌", CallbackData: "quickView_close"},
-			}, {
-				{Text: token.Symbol, CallbackData: "quickView_symbol"},
-			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "quickView_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "quickView_buyRight"},
-				{Text: "Buy X MON", CallbackData: "quickView_buyX"},
-			}, {
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "quickView_sellLeft"},
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "quickView_sellRight"},
-				{Text: "Sell X %", CallbackData: "quickView_sellX"},
-			}, {
-				{Text: "Refresh ⟳", CallbackData: "quickView_refresh"},
-			},
-		},
-	}
+	keyboard := genQuickViewKeyboard(buySellButtons, token.Symbol)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ParseMode:   models.ParseModeMarkdown,
 		Text:        inlineText,
 		ChatID:      msg.Chat.ID,
-		ReplyMarkup: keyboard,
+		ReplyMarkup: &keyboard,
 	})
 	/*cfg.userBalancesMu.Lock()
 	userBalances, ok := cfg.usersBalances[telegramID(telegramId)]
@@ -538,4 +524,78 @@ func (cfg *apiConfig) getTokenDecimals(tokenAddress string) (uint8, error) {
 		return 0, err
 	}
 	return uint8(token.Decimals), nil
+}
+
+func (cfg *apiConfig) handlerAutoBuy(ctx context.Context, b *bot.Bot, msg *models.Message, params database.GetBuyCommandParamsRow, token monorailBalancesResp) {
+	processingMsg, _ := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: msg.Chat.ID,
+		Text:   "Processing request...",
+	})
+	telegramID := msg.From.ID
+	tokenAddress := msg.Text
+	walletAddress, ok := params.Walletaddress.(string)
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println("Failed to parse wallet address as string")
+		return
+	}
+	decimals, err := strconv.ParseUint(token.Decimals, 10, 64)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	executingMsg, _ := b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: msg.Chat.ID,
+		Text:   "Executing purchase...",
+	})
+	buyResult, err := cfg.handlerBuy(ctx, telegramID, pgNumericToString(params.Autobuyamount), tokenAddress, uint8(decimals))
+	if err != nil {
+		errorMessage, found := strings.CutPrefix(err.Error(), "display to user: ")
+		if found {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: msg.Chat.ID,
+				Text:   errorMessage,
+			})
+			return
+		}
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: msg.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:    msg.Chat.ID,
+		ParseMode: models.ParseModeMarkdown,
+		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(buyResult.BoughtAmount, ".", "\\.", 1), token.Symbol, strings.Replace(pgNumericToString(params.Autobuyamount), ".", "\\.", 1), buyResult.TxHash),
+	})
+	inlineText, err := cfg.showBoughtToken(ctx, telegramID, token, walletAddress)
+	if err != nil {
+		return
+	}
+	buySellButtons := database.GetBuySellButtonsRow{
+		BuyButtonLeft:   params.BuyButtonLeft,
+		BuyButtonRight:  params.BuyButtonRight,
+		SellButtonLeft:  params.SellButtonLeft.Int16,
+		SellButtonRight: params.SellButtonRight.Int16,
+	}
+	keyboard := genQuickViewKeyboard(buySellButtons, token.Symbol)
+	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
+		ChatID:     msg.Chat.ID,
+		MessageIDs: []int{processingMsg.ID, executingMsg.ID},
+	})
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ParseMode:   models.ParseModeMarkdown,
+		Text:        inlineText,
+		ChatID:      msg.Chat.ID,
+		ReplyMarkup: &keyboard,
+	})
 }

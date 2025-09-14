@@ -162,30 +162,11 @@ func (cfg *apiConfig) handlerProcessBuyCommandBuyX(ctx context.Context, b *bot.B
 	if err != nil {
 		return
 	}
-	keyboard := &models.InlineKeyboardMarkup{
-		InlineKeyboard: [][]models.InlineKeyboardButton{
-			{
-				{Text: "Home 🏠︎", CallbackData: "quickView_home"},
-				{Text: "Close ❌", CallbackData: "quickView_close"},
-			}, {
-				{Text: tokenSymbol, CallbackData: "quickView_symbol"},
-			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "quickView_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "quickView_buyRight"},
-				{Text: "Buy X MON", CallbackData: "quickView_buyX"},
-			}, {
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "quickView_sellLeft"},
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "quickView_sellRight"},
-				{Text: "Sell X %", CallbackData: "quickView_sellX"},
-			}, {
-				{Text: "Refresh ⟳", CallbackData: "quickView_refresh"},
-			},
-		},
-	}
+	keyboard := genQuickViewKeyboard(buySellButtons, tokenSymbol)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ParseMode:   models.ParseModeMarkdown,
 		Text:        inlineText,
 		ChatID:      msg.Chat.ID,
-		ReplyMarkup: keyboard,
+		ReplyMarkup: &keyboard,
 	})
 }

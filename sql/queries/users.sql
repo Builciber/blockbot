@@ -37,3 +37,6 @@ SELECT updateReferrerEarnings(telegramId => $1, referrerEarnings => $2);
 
 -- name: GetReferralData :one
 SELECT referralCode, referralCount, referralEarnings FROM getReferralData(telegramId => $1);
+
+-- name: GetBuyCommandParams :one
+SELECT * FROM getBuyCommandParams(telegramId => $1);

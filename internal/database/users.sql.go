@@ -37,6 +37,35 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const getBuyCommandParams = `-- name: GetBuyCommandParams :one
+SELECT buy_button_left, buy_button_right, sell_button_left, sell_button_right, walletaddress, autobuyenabled, autobuyamount FROM getBuyCommandParams(telegramId => $1)
+`
+
+type GetBuyCommandParamsRow struct {
+	BuyButtonLeft   pgtype.Numeric
+	BuyButtonRight  pgtype.Numeric
+	SellButtonLeft  pgtype.Int2
+	SellButtonRight pgtype.Int2
+	Walletaddress   interface{}
+	Autobuyenabled  pgtype.Bool
+	Autobuyamount   pgtype.Numeric
+}
+
+func (q *Queries) GetBuyCommandParams(ctx context.Context, telegramid int64) (GetBuyCommandParamsRow, error) {
+	row := q.db.QueryRow(ctx, getBuyCommandParams, telegramid)
+	var i GetBuyCommandParamsRow
+	err := row.Scan(
+		&i.BuyButtonLeft,
+		&i.BuyButtonRight,
+		&i.SellButtonLeft,
+		&i.SellButtonRight,
+		&i.Walletaddress,
+		&i.Autobuyenabled,
+		&i.Autobuyamount,
+	)
+	return i, err
+}
+
 const getReferralCode = `-- name: GetReferralCode :one
 SELECT referral_code FROM users
 WHERE telegram_id = $1

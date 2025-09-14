@@ -16,24 +16,24 @@ func generateSettingsKeyboard(userSettings *database.Setting) (models.InlineKeyb
 	if err != nil {
 		return models.InlineKeyboardMarkup{}, err
 	}
-	/*autoBuyAmount, err := userSettings.AutoBuyAmount.Float64Value()
+	autoBuyAmount, err := userSettings.AutoBuyAmount.Float64Value()
 	if err != nil {
 		return models.InlineKeyboardMarkup{}, err
 	}
 	autoBuy := "🔴 Disabled"
 	if userSettings.AutoBuy {
 		autoBuy = "🟢 Enabled"
-	}*/
+	}
 
 	return models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
-			/*{
+			{
 				{Text: "--- Auto Buy ---", CallbackData: "settings_NoCallback"},
 			},
 			{
 				{Text: autoBuy, CallbackData: "settings_AB"},
 				{Text: fmt.Sprintf("✏️ %v MON", autoBuyAmount.Float64), CallbackData: "settings_ABConf"},
-			},*/
+			},
 			{
 				{Text: "--- Buy Buttons Config ---", CallbackData: "settings_NoCallback"},
 			},
@@ -69,6 +69,9 @@ func generateSettingsKeyboard(userSettings *database.Setting) (models.InlineKeyb
 }
 
 var settingsMessage = `*Configure Your Settings*:
+
+*AUTO BUY*
+Instantaneously buy tokens with a preset amount when pasting CAs\. Only executes for contract addresses and for tokens you don't hold\.
 
 *BUY BUTTONS CONFIG*
 Customize your buy buttons for the buy interface and portfolio interface\. Tap to edit\.

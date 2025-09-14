@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Builciber/blockbot/internal/database"
+	"github.com/go-telegram/bot/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -122,4 +124,27 @@ func retrieveRefCode(link string) string {
 		}
 	}
 	return link[refStartIndex : refEndIndex+1]
+}
+
+func genQuickViewKeyboard(buySellButtons database.GetBuySellButtonsRow, tokenSymbol string) models.InlineKeyboardMarkup {
+	return models.InlineKeyboardMarkup{
+		InlineKeyboard: [][]models.InlineKeyboardButton{
+			{
+				{Text: "Home 🏠︎", CallbackData: "quickView_home"},
+				{Text: "Close ❌", CallbackData: "quickView_close"},
+			}, {
+				{Text: tokenSymbol, CallbackData: "quickView_symbol"},
+			}, {
+				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "quickView_buyLeft"},
+				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "quickView_buyRight"},
+				{Text: "Buy X MON", CallbackData: "quickView_buyX"},
+			}, {
+				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "quickView_sellLeft"},
+				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "quickView_sellRight"},
+				{Text: "Sell X %", CallbackData: "quickView_sellX"},
+			}, {
+				{Text: "Refresh ⟳", CallbackData: "quickView_refresh"},
+			},
+		},
+	}
 }
