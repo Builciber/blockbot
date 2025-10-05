@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/Builciber/blockbot/internal/database"
@@ -20,16 +19,17 @@ import (
 )
 
 type apiConfig struct {
-	bwsApiKey      string
-	botToken       string
-	bwsOrigin      string
-	monorailAppId  string
-	DB             *database.Queries
-	dbConn         *pgxpool.Pool
-	intSeqMap      map[chatID]*interactionSequence
-	usersBalances  map[telegramID]*userBalances
-	mu             *sync.RWMutex
-	userBalancesMu *sync.RWMutex
+	bwsApiKey         string
+	botToken          string
+	bwsOrigin         string
+	monorailAppId     string
+	blockVisionApiKey string
+	DB                *database.Queries
+	dbConn            *pgxpool.Pool
+	intSeqMap         map[chatID]*interactionSequence
+	usersBalances     map[telegramID]*userBalances
+	mu                *sync.RWMutex
+	userBalancesMu    *sync.RWMutex
 }
 
 type interactionSequence struct {
@@ -60,6 +60,7 @@ func main() {
 	bwsOrigin := os.Getenv("BWS_ORIGIN")
 	monorailAppId := os.Getenv("MONORAIL_APP_ID")
 	tgWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
+	blockVisionApiKey := os.Getenv("BLOCKVISION_API_KEY")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	db, err := pgxpool.New(ctx, dbURL)
@@ -73,16 +74,17 @@ func main() {
 	mu := &sync.RWMutex{}
 	usersBalancesMu := &sync.RWMutex{}
 	cfg := &apiConfig{
-		bwsApiKey:      apiKey,
-		botToken:       botToken,
-		bwsOrigin:      bwsOrigin,
-		monorailAppId:  monorailAppId,
-		DB:             dbQueries,
-		dbConn:         db,
-		intSeqMap:      intSeqMap,
-		mu:             mu,
-		usersBalances:  usersBalances,
-		userBalancesMu: usersBalancesMu,
+		bwsApiKey:         apiKey,
+		botToken:          botToken,
+		bwsOrigin:         bwsOrigin,
+		monorailAppId:     monorailAppId,
+		blockVisionApiKey: blockVisionApiKey,
+		DB:                dbQueries,
+		dbConn:            db,
+		intSeqMap:         intSeqMap,
+		mu:                mu,
+		usersBalances:     usersBalances,
+		userBalancesMu:    usersBalancesMu,
 	}
 
 	exists, err := cfg.DB.PrivateBetaTestersExists(ctx)
@@ -126,12 +128,12 @@ func main() {
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
 
-	go b.StartWebhook(ctx)
+	b.Start(ctx)
 
-	server := http.Server{
+	/*server := http.Server{
 		Addr:    "0.0.0.0:8080",
 		Handler: mux,
 	}
 	log.Println("Started server on localhost at port 8080")
-	server.ListenAndServe()
+	server.ListenAndServe()*/
 }
