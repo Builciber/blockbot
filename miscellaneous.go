@@ -282,13 +282,23 @@ func formatFloat(float *big.Float, precision int) string {
 		var builder strings.Builder
 		subscript := int(exponent)*-1 - 1
 		mantissa := split[0]
-		hex := fmt.Sprintf("208%d", subscript)
-		hexAsInt, _ := strconv.ParseInt(hex, 16, 64)
 		if mantissa[0] == '-' {
 			builder.WriteString("-")
 		}
 		builder.WriteString("0.0")
-		builder.WriteRune(rune(hexAsInt))
+		if subscript > 9 {
+			str := strconv.Itoa(subscript)
+			hex := fmt.Sprintf("208%s", string(str[0]))
+			hexAsInt, _ := strconv.ParseInt(hex, 16, 64)
+			builder.WriteRune(rune(hexAsInt))
+			hex = fmt.Sprintf("208%s", string(str[1]))
+			hexAsInt, _ = strconv.ParseInt(hex, 16, 64)
+			builder.WriteRune(rune(hexAsInt))
+		} else {
+			hex := fmt.Sprintf("208%d", subscript)
+			hexAsInt, _ := strconv.ParseInt(hex, 16, 64)
+			builder.WriteRune(rune(hexAsInt))
+		}
 		for _, char := range mantissa {
 			if char != '.' && char != '-' {
 				builder.WriteRune(char)
