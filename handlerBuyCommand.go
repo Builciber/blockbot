@@ -159,7 +159,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 				},
 			},
 		}
-		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *0\\.00 MON*\nPrice Impact \\(%s MON\\): *%s*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.Address, compoundImpactFormatted, buyButtonRight, balanceFormatted, token.Address)
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *0\\.00 MON*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.Address, buyButtonRight, balanceFormatted, token.Address)
 		if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
 			inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
 		}
@@ -255,17 +255,6 @@ func (cfg *apiConfig) getCompoundImpactAndMonBalance(telegramId int64, forAmount
 	return monorailRespBody.CompoundImpact, getBalanceResp.Balance, nil
 }
 
-type monorailGetTokenResp struct {
-	Address     string   `json:"address"`
-	Name        string   `json:"name"`
-	Symbol      string   `json:"symbol"`
-	Decimals    int      `json:"decimals"`
-	Categories  []string `json:"categories"`
-	MonPerToken string   `json:"mon_per_token"`
-	Pconf       string   `json:"pconf"`
-	UsdPerToken string   `json:"usd_per_token"`
-}
-
 func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, update *models.Update) {
 	telegramID := update.CallbackQuery.From.ID
 	if update.CallbackQuery.Message.Message == nil {
@@ -275,8 +264,7 @@ func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, upd
 	splits := strings.Split(msg.Text, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")
 	tokenAddress := withTokenAddress[0:42]
-	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/token/%s", tokenAddress)
-	res, err := http.Get(url)
+	tokenData, err := cfg.findToken(tokenAddress, "")
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: msg.Chat.ID,
@@ -285,7 +273,7 @@ func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, upd
 		log.Println(err.Error())
 		return
 	}
-	body, err := io.ReadAll(res.Body)
+	filled, err := cfg.fillMissingPriceData([]monorailBalancesResp{tokenData})
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: msg.Chat.ID,
@@ -294,25 +282,7 @@ func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, upd
 		log.Println(err.Error())
 		return
 	}
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println("non 2xx status code received: ", res.StatusCode)
-		return
-	}
-	token := monorailGetTokenResp{}
-	err = json.Unmarshal(body, &token)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
+	token := filled[0]
 	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramID)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -404,25 +374,15 @@ func (cfg *apiConfig) buyCommandViewCallback(ctx context.Context, b *bot.Bot, up
 }
 
 func (cfg *apiConfig) getTokenDecimals(tokenAddress string) (uint8, error) {
-	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/token/%s", tokenAddress)
-	res, err := http.Get(url)
+	token, err := cfg.findToken(tokenAddress, "")
 	if err != nil {
 		return 0, err
 	}
-	body, err := io.ReadAll(res.Body)
+	decimals, err := strconv.ParseUint(token.Decimals, 10, 8)
 	if err != nil {
 		return 0, err
 	}
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		return 0, err
-	}
-	token := monorailGetTokenResp{}
-	err = json.Unmarshal(body, &token)
-	if err != nil {
-		return 0, err
-	}
-	return uint8(token.Decimals), nil
+	return uint8(decimals), nil
 }
 
 func (cfg *apiConfig) handlerAutoBuy(ctx context.Context, b *bot.Bot, msg *models.Message, params database.GetBuyCommandParamsRow, token monorailBalancesResp) {
