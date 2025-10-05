@@ -55,26 +55,34 @@ func stringToPGNumeric(str string) (pgtype.Numeric, error) {
 	return numeric, nil
 }
 
-func getTokenUSDPrice(monPerToken *big.Float) (*big.Float, error) {
+func getMONUSDPrice() (string, error) {
 	url := "https://testnet-api.monorail.xyz/v1/symbol/MONUSD"
 	res, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer res.Body.Close()
 	if res.StatusCode > 299 {
-		return nil, err
+		return "", err
 	}
 	monPrice := MonUsdPrice{}
 	err = json.Unmarshal(body, &monPrice)
 	if err != nil {
+		return "", err
+	}
+	return monPrice.Price, nil
+}
+
+func getTokenUSDPrice(monPerToken *big.Float) (*big.Float, error) {
+	price, err := getMONUSDPrice()
+	if err != nil {
 		return nil, err
 	}
-	tokenPrice, ok := new(big.Float).SetString(monPrice.Price)
+	tokenPrice, ok := new(big.Float).SetString(price)
 	if !ok {
 		return nil, fmt.Errorf("mon price unavailable")
 	}
@@ -147,4 +155,146 @@ func genQuickViewKeyboard(buySellButtons database.GetBuySellButtonsRow, tokenSym
 			},
 		},
 	}
+}
+
+func (cfg *apiConfig) fillMissingPriceData(tokensData []monorailBalancesResp) ([]monorailBalancesResp, error) {
+	tokenAddresses := []string{}
+	for _, data := range tokensData {
+		pconf, _ := strconv.ParseInt(data.Pconf, 10, 64)
+		if pconf < 90 {
+			tokenAddresses = append(tokenAddresses, data.Address)
+		}
+	}
+	if len(tokenAddresses) == 0 {
+		return tokensData, nil
+	}
+	priceData := []getPricesResp{}
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/prices", cfg.bwsOrigin), cfg.bwsApiKey, getPricesReq{TokenAddresses: tokenAddresses}, &priceData)
+	if err != nil {
+		return nil, err
+	}
+	addressToPriceData := make(map[string]getPricesResp)
+	for _, data := range priceData {
+		addressToPriceData[data.Address] = data
+	}
+	monPrice, err := getMONUSDPrice()
+	if err != nil {
+		return nil, err
+	}
+	for i := range tokensData {
+		if val, ok := addressToPriceData[tokensData[i].Address]; ok && val.MonPerToken != "" {
+			monPriceAsFloat, _ := new(big.Float).SetString(monPrice)
+			tokenUsdPrice, _ := new(big.Float).SetString(val.MonPerToken)
+			tokenUsdPrice.Mul(monPriceAsFloat, tokenUsdPrice)
+			tokenMonValue, _ := new(big.Float).SetString(val.MonPerToken)
+			balance, _ := new(big.Float).SetString(tokensData[i].Balance)
+			tokenMonValue.Mul(balance, tokenMonValue)
+			tokensData[i].MonPerToken = val.MonPerToken
+			tokensData[i].MonValue = tokenMonValue.Text(byte('f'), -1)
+			tokensData[i].UsdPerToken = tokenUsdPrice.Text(byte('f'), -1)
+		}
+	}
+	return tokensData, nil
+}
+
+func getPortfolioWorth(walletAddress string) (string, error) {
+	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/portfolio/%s/value", walletAddress)
+	res, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+	res.Body.Close()
+	if res.StatusCode > 299 {
+		return "", fmt.Errorf("non 2XX status code returned")
+	}
+	totalPortfolioValue := monorailTotalPortfolioResp{}
+	err = json.Unmarshal(body, &totalPortfolioValue)
+	if err != nil {
+		return "", err
+	}
+	return totalPortfolioValue.Value, nil
+}
+
+func getWalletTokenBalance(walletAddress string) ([]monorailBalancesResp, error) {
+	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/wallet/%s/balances", walletAddress)
+	res, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	res.Body.Close()
+	if res.StatusCode > 299 {
+		return nil, fmt.Errorf("non 2XX status code received")
+	}
+	monorailRespBody := []monorailBalancesResp{}
+	err = json.Unmarshal(body, &monorailRespBody)
+	if err != nil {
+		return nil, err
+	}
+	return monorailRespBody, nil
+}
+
+func displayDecimal(decimal string, precision int) (string, error) {
+	float, ok := new(big.Float).SetString(decimal)
+	if !ok {
+		return "", fmt.Errorf("failed to parse decimal as big.Float")
+	}
+	scientificNotation := float.Text(byte('e'), precision)
+	roundedDecimal := float.Text(byte('f'), precision)
+	split := strings.Split(scientificNotation, "e")
+	exponentString := split[1]
+	exponent, err := strconv.ParseInt(exponentString, 10, 64)
+	if err != nil {
+		return "", nil
+	}
+	if exponent < 0 && exponent*-1 > 1 {
+		var builder strings.Builder
+		subscript := int(exponent)*-1 - 1
+		mantissa := split[0]
+		hex := fmt.Sprintf("208%d", subscript)
+		hexAsInt, _ := strconv.ParseInt(hex, 16, 64)
+		builder.WriteString("0.0")
+		builder.WriteRune(rune(hexAsInt))
+		for _, char := range mantissa {
+			if char != '.' {
+				builder.WriteRune(char)
+			}
+		}
+		return builder.String(), nil
+	}
+	return roundedDecimal, nil
+}
+
+func formatFloat(float *big.Float, precision int) string {
+	scientificNotation := float.Text(byte('e'), precision)
+	roundedDecimal := float.Text(byte('f'), precision)
+	split := strings.Split(scientificNotation, "e")
+	exponentString := split[1]
+	exponent, _ := strconv.ParseInt(exponentString, 10, 64)
+	if exponent < 0 && exponent*-1-1 > 1 {
+		var builder strings.Builder
+		subscript := int(exponent)*-1 - 1
+		mantissa := split[0]
+		hex := fmt.Sprintf("208%d", subscript)
+		hexAsInt, _ := strconv.ParseInt(hex, 16, 64)
+		if mantissa[0] == '-' {
+			builder.WriteString("-")
+		}
+		builder.WriteString("0.0")
+		builder.WriteRune(rune(hexAsInt))
+		for _, char := range mantissa {
+			if char != '.' && char != '-' {
+				builder.WriteRune(char)
+			}
+		}
+		return builder.String()
+	}
+	return roundedDecimal
 }
