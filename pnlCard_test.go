@@ -7,38 +7,56 @@ import (
 )
 
 func TestGenerateProfitCard(t *testing.T) {
-	buf, err := generateProfitCard("CHOG/MON", 45.67, 20*time.Minute+15*time.Second, "BBBBBBB")
+	data := PNLCardData{
+		TokenPair:      "CHOG/MON",
+		PercentageGain: "+45.67%",
+		TradeDuration:  formatDuration(20*time.Minute + 15*time.Second),
+		ReferralCode:   "BBBBBBB",
+		IsProfit:       true,
+		BackgroundPath: profitBackground[2],
+	}
+
+	buf, err := generatePNLCard(data)
 	if err != nil {
 		t.Fatalf("Failed to generate profit card: %v", err)
 	}
 
 	if buf.Len() == 0 {
-		t.Fatal("Generated card buffer is empty")
+		t.Fatal("Generated profit card buffer is empty")
 	}
 
 	err = os.WriteFile("test_profit_card.png", buf.Bytes(), 0644)
 	if err != nil {
-		t.Logf("Warning: Could not save test file: %v", err)
+		t.Logf("Warning: Could not save profit card test file: %v", err)
 	} else {
-		t.Log("Profit card saved to test_profit_card.png")
+		t.Log("✅ Profit card saved to test_profit_card.png")
 	}
 }
 
 func TestGenerateLossCard(t *testing.T) {
-	buf, err := generateLossCard("CHOG/MON", -23.45, 1*time.Hour+30*time.Minute, "BBBBBBB")
+	data := PNLCardData{
+		TokenPair:      "CHOG/MON",
+		PercentageGain: "-23.45%",
+		TradeDuration:  formatDuration(1*time.Hour + 30*time.Minute),
+		ReferralCode:   "BBBBBBB",
+		IsProfit:       false,
+		BackgroundPath: lossBackgrounds[0],
+	}
+
+	buf, err := generatePNLCard(data)
 	if err != nil {
 		t.Fatalf("Failed to generate loss card: %v", err)
 	}
 
 	if buf.Len() == 0 {
-		t.Fatal("Generated card buffer is empty")
+		t.Fatal("Generated loss card buffer is empty")
 	}
 
 	err = os.WriteFile("test_loss_card.png", buf.Bytes(), 0644)
 	if err != nil {
-		t.Logf("Warning: Could not save test file: %v", err)
+		t.Logf("Warning: Could not save loss card test file: %v", err)
 	} else {
-		t.Log("Loss card saved to test_loss_card.png")
+		t.Log("✅ Loss card saved to test_loss_card.png")
 	}
 }
 

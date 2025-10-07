@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"image"
+	"os"
 	"time"
 
 	"github.com/fogleman/gg"
@@ -17,74 +19,82 @@ type PNLCardData struct {
 	TradeDuration  string
 	ReferralCode   string
 	IsProfit       bool
+	BackgroundPath string
 }
 
 const (
-	cardWidth  = 800
-	cardHeight = 600
+	cardWidth  = 1151
+	cardHeight = 768
 
-	profitColor     = "#3CFE92"
-	lossColor       = "#F54542"
-	labelColor      = "#9F9F9F"
-	backgroundColor = "#1a1a1a"
+	profitColor = "#3CFE92"
+	lossColor   = "#F54542"
+	labelColor  = "#9F9F9F"
+)
+
+var (
+	profitBackground = []string{
+		"./template/PNL Card Testnet - Profit 1 (Empty).jpg",
+		"./template/PNL Card Testnet - Profit 8 (Empty).jpg",
+		"./template/PNL Card Testnet - Profit 4 (Empty).jpg",
+	}
+	lossBackgrounds = []string{
+		"./template/PNL Card Testnet - Loss 1 (Empty).jpg",
+		"./template/PNL Card Testnet - Loss 3 (Empty).jpg",
+		"./template/PNL Card Testnet - Loss 5 (Empty).jpg",
+	}
 )
 
 func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	dc := gg.NewContext(cardWidth, cardHeight)
 
-	dc.SetHexColor(backgroundColor)
-	dc.Clear()
-
-	regularFont, err := truetype.Parse(goregular.TTF)
+	bgFile, err := os.Open(data.BackgroundPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse regular font: %w", err)
+		return nil, fmt.Errorf("failed to open background: %w", err)
 	}
+	defer bgFile.Close()
 
-	boldFont, err := truetype.Parse(gobold.TTF)
+	img, _, err := image.Decode(bgFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse bold font: %w", err)
+		return nil, fmt.Errorf("failed to decode background: %w", err)
 	}
+	dc.DrawImageAnchored(img, cardWidth/2, cardHeight/2, 0.5, 0.5)
+
+	// 🎨 Load fonts
+	regularFont, _ := truetype.Parse(goregular.TTF)
+	boldFont, _ := truetype.Parse(gobold.TTF)
 
 	mainColor := profitColor
 	if !data.IsProfit {
 		mainColor = lossColor
 	}
 
-	tickerFace := truetype.NewFace(boldFont, &truetype.Options{Size: 48})
-	dc.SetFontFace(tickerFace)
+	// Token Pair
+	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 48}))
 	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(data.TokenPair, cardWidth/2, 150, 0.5, 0.5)
+	dc.DrawStringAnchored(data.TokenPair, 300, 250, 0.5, 0.5)
 
-	percentageFace := truetype.NewFace(boldFont, &truetype.Options{Size: 72})
-	dc.SetFontFace(percentageFace)
+	// Percentage Gain / Loss
+	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 72}))
+	dc.DrawStringAnchored(data.PercentageGain, 300, 360, 0.5, 0.5)
+
+	//  Unrealized PnL
+	dc.SetFontFace(truetype.NewFace(regularFont, &truetype.Options{Size: 20}))
+	dc.SetHexColor(labelColor)
+	dc.DrawStringAnchored("Unrealized PnL", 300, 420, 0.5, 0.5)
+
+	//  Trade Duration
+	dc.SetFontFace(truetype.NewFace(regularFont, &truetype.Options{Size: 16}))
+	dc.DrawStringAnchored(fmt.Sprintf("Trade Duration (%s)", data.TradeDuration), 300, 460, 0.5, 0.5)
+
+	// Referral Code
+	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 32}))
 	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(data.PercentageGain, cardWidth/2, 250, 0.5, 0.5)
-
-	labelFace := truetype.NewFace(regularFont, &truetype.Options{Size: 20})
-	dc.SetFontFace(labelFace)
-	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored("Unrealized PnL", cardWidth/2, 320, 0.5, 0.5)
-
-	durationFace := truetype.NewFace(regularFont, &truetype.Options{Size: 16})
-	dc.SetFontFace(durationFace)
-	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored(fmt.Sprintf("Trade Duration (%s)", data.TradeDuration), cardWidth/2, 370, 0.5, 0.5)
-
-	refCodeFace := truetype.NewFace(boldFont, &truetype.Options{Size: 32})
-	dc.SetFontFace(refCodeFace)
-	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(fmt.Sprintf("Referral Code (%s)", data.ReferralCode), cardWidth/2, 480, 0.5, 0.5)
-
-	refLabelFace := truetype.NewFace(regularFont, &truetype.Options{Size: 16})
-	dc.SetFontFace(refLabelFace)
-	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored("Share your code and earn rewards!", cardWidth/2, 530, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("Referral Code (%s)", data.ReferralCode), 300, 530, 0.5, 0.5)
 
 	buf := new(bytes.Buffer)
 	if err := dc.EncodePNG(buf); err != nil {
 		return nil, fmt.Errorf("failed to encode PNG: %w", err)
 	}
-
 	return buf, nil
 }
 
