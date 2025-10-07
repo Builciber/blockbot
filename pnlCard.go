@@ -9,8 +9,6 @@ import (
 
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font/gofont/gobold"
-	"golang.org/x/image/font/gofont/goregular"
 )
 
 type PNLCardData struct {
@@ -60,8 +58,23 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	dc.DrawImageAnchored(img, cardWidth/2, cardHeight/2, 0.5, 0.5)
 
 	// 🎨 Load fonts
-	regularFont, _ := truetype.Parse(goregular.TTF)
-	boldFont, _ := truetype.Parse(gobold.TTF)
+	tickerFontBytes, err := os.ReadFile("./fonts/TacticSansExtExd-Blk.ttf")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read ticker font: %w", err)
+	}
+	tickerFont, err := truetype.Parse(tickerFontBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse ticker font: %w", err)
+	}
+
+	textFontBytes, err := os.ReadFile("./fonts/TTFirsNeue-DemiBold.ttf")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read text font: %w", err)
+	}
+	textFont, err := truetype.Parse(textFontBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse text font: %w", err)
+	}
 
 	mainColor := profitColor
 	if !data.IsProfit {
@@ -69,25 +82,25 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	}
 
 	// Token Pair
-	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 48}))
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 48}))
 	dc.SetHexColor(mainColor)
 	dc.DrawStringAnchored(data.TokenPair, 300, 250, 0.5, 0.5)
 
 	// Percentage Gain / Loss
-	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 72}))
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 72}))
 	dc.DrawStringAnchored(data.PercentageGain, 300, 360, 0.5, 0.5)
 
 	//  Unrealized PnL
-	dc.SetFontFace(truetype.NewFace(regularFont, &truetype.Options{Size: 20}))
+	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 20}))
 	dc.SetHexColor(labelColor)
 	dc.DrawStringAnchored("Unrealized PnL", 300, 420, 0.5, 0.5)
 
 	//  Trade Duration
-	dc.SetFontFace(truetype.NewFace(regularFont, &truetype.Options{Size: 16}))
+	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 16}))
 	dc.DrawStringAnchored(fmt.Sprintf("Trade Duration (%s)", data.TradeDuration), 300, 460, 0.5, 0.5)
 
 	// Referral Code
-	dc.SetFontFace(truetype.NewFace(boldFont, &truetype.Options{Size: 32}))
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 32}))
 	dc.SetHexColor(mainColor)
 	dc.DrawStringAnchored(fmt.Sprintf("Referral Code (%s)", data.ReferralCode), 300, 530, 0.5, 0.5)
 
