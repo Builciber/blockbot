@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/fogleman/gg"
@@ -21,12 +22,13 @@ type PNLCardData struct {
 }
 
 const (
-	cardWidth  = 1151
-	cardHeight = 768
+	cardWidth  = 1351
+	cardHeight = 901
 
 	profitColor = "#3CFE92"
 	lossColor   = "#F54542"
 	labelColor  = "#9F9F9F"
+	textWhite   = "#FFFFFF"
 )
 
 var (
@@ -55,9 +57,9 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode background: %w", err)
 	}
+
 	dc.DrawImageAnchored(img, cardWidth/2, cardHeight/2, 0.5, 0.5)
 
-	// 🎨 Load fonts
 	tickerFontBytes, err := os.ReadFile("./fonts/TacticSansExtExd-Blk.ttf")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ticker font: %w", err)
@@ -81,28 +83,53 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 		mainColor = lossColor
 	}
 
-	// Token Pair
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 48}))
-	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(data.TokenPair, 300, 250, 0.5, 0.5)
+	xLeft := 50.0
 
-	// Percentage Gain / Loss
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 72}))
-	dc.DrawStringAnchored(data.PercentageGain, 300, 360, 0.5, 0.5)
+	maxWidth := 320.0
+	tokenPair := strings.ToUpper(data.TokenPair)
 
-	//  Unrealized PnL
-	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 20}))
+	fontSize := 54.0
+	if len(data.TokenPair) > 10 {
+		dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 46}))
+	}
+
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: fontSize}))
+	dc.SetHexColor(textWhite)
+
+	if len(data.TokenPair) > 10 {
+		dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 46}))
+	}
+
+	y := 240.0
+	lineHeight := 1.2
+	dc.DrawStringWrapped(tokenPair, xLeft, y, 0, 0.5, maxWidth, lineHeight, gg.AlignLeft)
+	dc.DrawStringAnchored(data.TokenPair, xLeft, y, 0, 0.5)
+
+	y += 80
+	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 22}))
 	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored("Unrealized PnL", 300, 420, 0.5, 0.5)
+	dc.DrawStringAnchored("Unrealized PnL", xLeft, y, 0, 0.5)
 
-	//  Trade Duration
-	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 16}))
-	dc.DrawStringAnchored(fmt.Sprintf("Trade Duration (%s)", data.TradeDuration), 300, 460, 0.5, 0.5)
-
-	// Referral Code
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 32}))
+	y += 60
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 68}))
 	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(fmt.Sprintf("Referral Code (%s)", data.ReferralCode), 300, 530, 0.5, 0.5)
+	dc.DrawStringAnchored(data.PercentageGain, xLeft, y, 0, 0.5)
+
+	y += 50
+	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 18}))
+	dc.SetHexColor(labelColor)
+	dc.DrawStringAnchored(fmt.Sprintf("⏺ %s", data.TradeDuration), xLeft, y, 0, 0.5)
+
+	referralLabelY := 640.0
+	codeY := referralLabelY + 28
+
+	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 16}))
+	dc.SetHexColor(labelColor)
+	dc.DrawStringAnchored("Referral Code", xLeft, referralLabelY, 0, 0.5)
+
+	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 28}))
+	dc.SetHexColor(mainColor)
+	dc.DrawStringAnchored(data.ReferralCode, xLeft, codeY, 0, 0.5)
 
 	buf := new(bytes.Buffer)
 	if err := dc.EncodePNG(buf); err != nil {
