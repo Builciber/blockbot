@@ -118,7 +118,7 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	y += 50
 	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 18}))
 	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored(fmt.Sprintf("⏺ %s", data.TradeDuration), xLeft, y, 0, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("duration %s", data.TradeDuration), xLeft, y, 0, 0.5)
 
 	referralLabelY := 640.0
 	codeY := referralLabelY + 28
