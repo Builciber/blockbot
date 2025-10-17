@@ -134,8 +134,6 @@ func main() {
 
 	go b.StartWebhook(ctx)
 
-	go cfg.sendTestBadgeToAllUsers(ctx, b)
-
 	server := http.Server{
 		Addr:    "0.0.0.0:8080",
 		Handler: mux,

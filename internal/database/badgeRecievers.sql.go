@@ -23,3 +23,23 @@ func (q *Queries) CreateBadgeReceiver(ctx context.Context, arg CreateBadgeReceiv
 	_, err := q.db.Exec(ctx, createBadgeReceiver, arg.TelegramID, arg.HasTestBadge)
 	return err
 }
+
+const sendFeedbackBadge = `-- name: SendFeedbackBadge :exec
+UPDATE badge_receivers SET has_feedback_badge = TRUE
+WHERE telegram_id = $1
+`
+
+func (q *Queries) SendFeedbackBadge(ctx context.Context, telegramID int64) error {
+	_, err := q.db.Exec(ctx, sendFeedbackBadge, telegramID)
+	return err
+}
+
+const sendTestBage = `-- name: SendTestBage :exec
+UPDATE badge_receivers SET has_test_badge = TRUE
+WHERE telegram_id = $1
+`
+
+func (q *Queries) SendTestBage(ctx context.Context, telegramID int64) error {
+	_, err := q.db.Exec(ctx, sendTestBage, telegramID)
+	return err
+}

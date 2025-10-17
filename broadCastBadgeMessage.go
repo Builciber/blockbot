@@ -94,7 +94,7 @@ func (cfg *apiConfig) sendBadgeMessage(ctx context.Context, b *bot.Bot, update *
 			ChatID: chatId,
 			Text:   feedbackMessage,
 		})
-		cfg.DB.SentFeedBackBadgeMsg(ctx, username)
+		cfg.updateFeedbackBadgeStatusTx(ctx, username, telegramId)
 	}
 }
 
@@ -132,4 +132,22 @@ func (cfg *apiConfig) sendTestBadgeToAllUsers(ctx context.Context, b *bot.Bot) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	cfg.DB.MarkAllSentBadgeMsgTrue(ctx)
+}
+
+func (cfg *apiConfig) updateFeedbackBadgeStatusTx(ctx context.Context, telegramUsername string, telegramId int64) error {
+	tx, err := cfg.dbConn.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	qtx := cfg.DB.WithTx(tx)
+	err = qtx.SentFeedBackBadgeMsg(ctx, telegramUsername)
+	if err != nil {
+		return err
+	}
+	err = qtx.SendFeedbackBadge(ctx, telegramId)
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
