@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 )
 
-var testerMessage = `Hey %s, it’s me — Blockie 
+var testerMessage = `Hey, it’s me — Blockie 
 
 You’ve been part of my early runs, testing trades and helping me get sharper on Monad. I just wanted to say thank you for trusting me this early.
 
@@ -96,4 +97,40 @@ func (cfg *apiConfig) sendBadgeMessage(ctx context.Context, b *bot.Bot, update *
 		})
 		cfg.DB.SentFeedBackBadgeMsg(ctx, username)
 	}
+}
+
+func (cfg *apiConfig) sendTestBadgeToAllUsers(ctx context.Context, b *bot.Bot) {
+	userIds, err := cfg.DB.GetUserIds(ctx)
+	if err != nil {
+		return
+	}
+	for _, userId := range userIds {
+		fileContent, _ := os.ReadFile("tester_badge.jpg")
+		_, err = b.SendPhoto(ctx, &bot.SendPhotoParams{
+			ChatID: userId,
+			Photo: &models.InputFileUpload{
+				Filename: "tester_badge.jpg",
+				Data:     bytes.NewReader(fileContent),
+			},
+		})
+		if err != nil {
+			return
+		}
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: userId,
+			Text:   testerMessage,
+		})
+		if err != nil {
+			return
+		}
+		err = cfg.DB.CreateBadgeReceiver(ctx, database.CreateBadgeReceiverParams{
+			TelegramID:   userId,
+			HasTestBadge: true,
+		})
+		if err != nil {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	cfg.DB.MarkAllSentBadgeMsgTrue(ctx)
 }

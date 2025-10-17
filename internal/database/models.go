@@ -8,6 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type BadgeReceiver struct {
+	TelegramID       int64
+	HasTestBadge     bool
+	HasFeedbackBadge bool
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+}
+
 type Position struct {
 	Trader           int64
 	TokenAddress     string

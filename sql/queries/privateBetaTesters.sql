@@ -26,3 +26,6 @@ WHERE telegram_username = $1;
 -- name: Gavefeedback :one
 SELECT gave_feedback FROM private_beta_testers
 WHERE telegram_username = $1;
+
+-- name: MarkAllSentBadgeMsgTrue :exec
+UPDATE private_beta_testers SET sent_badge_msg = TRUE;

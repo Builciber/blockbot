@@ -143,6 +143,30 @@ func (q *Queries) GetUserByRefCode(ctx context.Context, referralCode string) (in
 	return telegram_id, err
 }
 
+const getUserIds = `-- name: GetUserIds :many
+SELECT telegram_id FROM users
+`
+
+func (q *Queries) GetUserIds(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getUserIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var telegram_id int64
+		if err := rows.Scan(&telegram_id); err != nil {
+			return nil, err
+		}
+		items = append(items, telegram_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getWalletAddress = `-- name: GetWalletAddress :one
 SELECT wallet_address FROM users
 WHERE telegram_id = $1

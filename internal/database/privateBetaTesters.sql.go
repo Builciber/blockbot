@@ -81,6 +81,15 @@ func (q *Queries) IsBetaTester(ctx context.Context, telegramUsername string) (bo
 	return exists, err
 }
 
+const markAllSentBadgeMsgTrue = `-- name: MarkAllSentBadgeMsgTrue :exec
+UPDATE private_beta_testers SET sent_badge_msg = TRUE
+`
+
+func (q *Queries) MarkAllSentBadgeMsgTrue(ctx context.Context) error {
+	_, err := q.db.Exec(ctx, markAllSentBadgeMsgTrue)
+	return err
+}
+
 const privateBetaTestersExists = `-- name: PrivateBetaTestersExists :one
 SELECT EXISTS (SELECT 1 FROM private_beta_testers WHERE telegram_username IS NOT NULL LIMIT 1)
 `

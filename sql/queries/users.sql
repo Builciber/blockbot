@@ -44,3 +44,6 @@ SELECT * FROM getBuyCommandParams(telegramId => $1);
 -- name: UpdateUserChatId :exec
 UPDATE users SET chat_id = $2, updated_at = NOW()::TIMESTAMP
 WHERE telegram_id = $1;
+
+-- name: GetUserIds :many
+SELECT telegram_id FROM users;
