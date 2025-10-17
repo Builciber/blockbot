@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -67,7 +66,7 @@ func (cfg *apiConfig) sendBadgeMessage(ctx context.Context, b *bot.Bot, update *
 		TelegramID: telegramId,
 		ChatID:     chatId,
 	})
-	if !messageState.SentBadgeMsg.Bool {
+	/*if !messageState.SentBadgeMsg.Bool {
 		fileContent, _ := os.ReadFile("tester_badge.jpg")
 		b.SendPhoto(ctx, &bot.SendPhotoParams{
 			ChatID: chatId,
@@ -81,7 +80,7 @@ func (cfg *apiConfig) sendBadgeMessage(ctx context.Context, b *bot.Bot, update *
 			Text:   fmt.Sprintf(testerMessage, username),
 		})
 		cfg.DB.SentTestBadgeMsg(ctx, username)
-	}
+	}*/
 	if !messageState.SentFeedbackBadgeMsg.Bool && messageState.GaveFeedback.Bool {
 		fileContent, _ := os.ReadFile("feedback_badge.jpg")
 		b.SendPhoto(ctx, &bot.SendPhotoParams{
