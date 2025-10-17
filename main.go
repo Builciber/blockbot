@@ -25,6 +25,7 @@ type apiConfig struct {
 	bwsOrigin         string
 	monorailAppId     string
 	blockVisionApiKey string
+	nadfunApiOrigin   string
 	DB                *database.Queries
 	dbConn            *pgxpool.Pool
 	intSeqMap         map[chatID]*interactionSequence
@@ -47,7 +48,7 @@ type chatID int64
 type telegramID int64
 
 type userBalances struct {
-	balances            []monorailBalancesResp
+	balances            []Token
 	currBalanceIdx      int
 	totalPortFolioValue string
 	monBalance          string
@@ -62,6 +63,7 @@ func main() {
 	monorailAppId := os.Getenv("MONORAIL_APP_ID")
 	tgWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
 	blockVisionApiKey := os.Getenv("BLOCKVISION_API_KEY")
+	nadfunApiOrigin := os.Getenv("NADFUN_API_ORIGIN")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	db, err := pgxpool.New(ctx, dbURL)
@@ -80,6 +82,7 @@ func main() {
 		bwsOrigin:         bwsOrigin,
 		monorailAppId:     monorailAppId,
 		blockVisionApiKey: blockVisionApiKey,
+		nadfunApiOrigin:   nadfunApiOrigin,
 		DB:                dbQueries,
 		dbConn:            db,
 		intSeqMap:         intSeqMap,

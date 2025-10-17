@@ -112,12 +112,12 @@ func (cfg *apiConfig) handlerProcessBuyX(ctx context.Context, b *bot.Bot, msg *m
 		Text:   "Processing request...",
 	})
 	token := userBalances.balances[userBalances.currBalanceIdx]
-	tokenDecimals, _ := strconv.Atoi(token.Decimals)
+	tokenDecimals := token.Decimals
 	executingMsg, _ := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: msg.Chat.ID,
 		Text:   "Executing purchase...",
 	})
-	buyResult, err := cfg.handlerBuy(ctx, telegramId, msg.Text, token.Address, uint8(tokenDecimals))
+	buyResult, err := cfg.handlerBuy(ctx, telegramId, msg.Text, token.ContractAddress, uint8(tokenDecimals))
 	if err != nil {
 		errorMessage, found := strings.CutPrefix(err.Error(), "display to user: ")
 		if found {
@@ -137,7 +137,7 @@ func (cfg *apiConfig) handlerProcessBuyX(ctx context.Context, b *bot.Bot, msg *m
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    msg.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(buyResult.BoughtAmount, ".", "\\.", 1), token.Symbol, strings.Replace(msg.Text, ".", "\\.", 1), buyResult.TxHash),
+		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(buyResult.BoughtAmount, 3), ".", "\\.", 1), token.Symbol, strings.Replace(displayDecimal(msg.Text, 3), ".", "\\.", 1), buyResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     msg.Chat.ID,

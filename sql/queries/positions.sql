@@ -15,8 +15,8 @@ SELECT token_address FROM positions
 WHERE trader = $1 AND is_hidden = TRUE;
 
 -- name: UpdatePosition :exec
-UPDATE positions SET total_mon_cost = $2, total_token_amount = $3, updated_at = $4
-WHERE trader = $1;
+UPDATE positions SET total_mon_cost = $3, total_token_amount = $4, updated_at = $5
+WHERE trader = $1 AND token_address = $2;
 
 -- name: DeleteUserPositions :exec
 DELETE FROM positions WHERE trader = $1;

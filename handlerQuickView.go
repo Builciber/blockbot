@@ -13,7 +13,7 @@ func (cfg *apiConfig) quickViewCallback(ctx context.Context, b *bot.Bot, update 
 		ShowAlert:       false,
 	})
 	switch update.CallbackQuery.Data {
-	case "quckView_home":
+	case "quickView_home":
 		cfg.handlerHomeButton(ctx, b, update)
 	case "quickView_close":
 		cfg.handlerCloseButton(ctx, b, update)
@@ -32,4 +32,5 @@ func (cfg *apiConfig) quickViewCallback(ctx context.Context, b *bot.Bot, update 
 	case "quickView_refresh":
 		cfg.handlerQuickViewRefresh(ctx, b, update)
 	}
+	cfg.sendBadgeMessage(ctx, b, update)
 }

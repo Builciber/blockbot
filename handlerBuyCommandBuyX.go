@@ -140,7 +140,7 @@ func (cfg *apiConfig) handlerProcessBuyCommandBuyX(ctx context.Context, b *bot.B
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    msg.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(buyResult.BoughtAmount, ".", "\\.", 1), tokenSymbol, strings.Replace(msg.Text, ".", "\\.", 1), buyResult.TxHash),
+		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(buyResult.BoughtAmount, 3), ".", "\\.", 1), tokenSymbol, strings.Replace(displayDecimal(msg.Text, 3), ".", "\\.", 1), buyResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     msg.Chat.ID,
@@ -150,11 +150,7 @@ func (cfg *apiConfig) handlerProcessBuyCommandBuyX(ctx context.Context, b *bot.B
 	if err != nil {
 		return
 	}
-	tokenInfo, err := cfg.findToken(tokenAddress, walletAddress)
-	if err != nil {
-		return
-	}
-	inlineText, err := cfg.showBoughtToken(ctx, telegramId, tokenInfo, walletAddress)
+	inlineText, err := cfg.showBoughtToken(ctx, telegramId, tokenAddress, walletAddress)
 	if err != nil {
 		return
 	}

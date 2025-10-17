@@ -4,14 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/big"
-	"strconv"
-	"strings"
 
-	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -26,35 +21,9 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 		return
 	}
 	token := userBalances.balances[userBalances.currBalanceIdx-1]
-	pnlPercentFormatted := "N/A"
-	pnlFormatted := "N/A"
-	initialCostFormatted := "N/A"
-	priceFormatted := "N/A"
-	position, err := cfg.DB.CallGetPositionFunc(ctx, database.CallGetPositionFuncParams{Traderid: telegramId, Tokenaddress: token.Address})
-	if token.MonPerToken != "" {
-		currPricePerToken, _ := new(big.Float).SetString(token.MonPerToken)
-		priceFormatted = strings.Replace(formatFloat(currPricePerToken, 4), ".", "\\.", 1)
-		if err == nil {
-			initialMonCost, _ := new(big.Float).SetString(pgNumericToString(position.TotalMonCost))
-			totalTokenAmount, _ := new(big.Float).SetString(pgNumericToString(position.TotalTokenAmount))
-			currentMonValue := new(big.Float)
-			currentMonValue.Mul(currPricePerToken, totalTokenAmount)
-			pnl := new(big.Float)
-			pnl.Sub(currentMonValue, initialMonCost)
-			ratio := new(big.Float)
-			ratio.Quo(pnl, initialMonCost)
-			pnlPercent := new(big.Float)
-			pnlPercent.Mul(ratio, big.NewFloat(100))
-			replacer := strings.NewReplacer(".", "\\.", "-", "\\-", "+", "\\+")
-			pnlPercentFormatted = formatPnl(formatFloat(pnlPercent, 2))
-			pnlPercentFormatted = replacer.Replace(pnlPercentFormatted)
-			pnlFormatted = formatPnl(formatFloat(pnl, 4))
-			pnlFormatted = replacer.Replace(pnlFormatted)
-			initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
-		}
-	}
-	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); !(ok && pgErr.Code == "P0002") { // if not a `no_data_found` PL/pgsql error
+	if token.MarketCap == "" {
+		marketData, err := cfg.getMarketData(token.ContractAddress)
+		if err != nil {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
 				Text:   "Something went wrong, please try again",
@@ -62,26 +31,20 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 			log.Println(err.Error())
 			return
 		}
+		token.MarketCap = marketData.MarketCap
+		token.Liquidity = marketData.Liquidity
+		token.Intervals = marketData.Intervals
+		token.Tag = marketData.Tag
 	}
-	monValueFormatted := "N/A"
-	usdValueFormatted := "N/A"
-	if token.MonValue != "" {
-		if val, _ := strconv.ParseFloat(token.MonValue, 64); val != 0 {
-			monValue, _ := new(big.Float).SetString(token.MonValue)
-			monValueFormatted = strings.Replace(formatFloat(monValue, 4), ".", "\\.", 1)
-		}
+	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, userBalances.monBalance)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
 	}
-	tokenAmount, _ := new(big.Float).SetString(token.Balance)
-	if token.UsdPerToken != "" {
-		if val, _ := strconv.ParseFloat(token.UsdPerToken, 64); val != 0 {
-			usdPerToken, _ := new(big.Float).SetString(token.UsdPerToken)
-			usdValue := usdPerToken.Mul(tokenAmount, usdPerToken)
-			usdValueFormatted = strings.Replace(formatFloat(usdValue, 2), ".", "\\.", 1)
-		}
-	}
-	tokenBalance, _ := new(big.Float).SetString(token.Balance)
-	tokenBalanceFormatted := strings.Replace(formatFloat(tokenBalance, 4), ".", "\\.", 1)
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s* MON\nPrice: *%s MON* \n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\nTotal Portfolio Value: *$%s*\n\n[*View Token on Explorer*](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", token.Symbol, token.Name, token.Address, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, priceFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, userBalances.monBalance, userBalances.totalPortFolioValue, token.Address, token.Address)
 	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -123,6 +86,7 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 	})
 	cfg.userBalancesMu.Lock()
 	ub := cfg.usersBalances[telegramID(telegramId)]
+	ub.balances[ub.currBalanceIdx-1] = token
 	ub.currBalanceIdx -= 1
 	cfg.userBalancesMu.Unlock()
 }

@@ -240,12 +240,13 @@ func (q *Queries) UnhidePosition(ctx context.Context, arg UnhidePositionParams) 
 }
 
 const updatePosition = `-- name: UpdatePosition :exec
-UPDATE positions SET total_mon_cost = $2, total_token_amount = $3, updated_at = $4
-WHERE trader = $1
+UPDATE positions SET total_mon_cost = $3, total_token_amount = $4, updated_at = $5
+WHERE trader = $1 AND token_address = $2
 `
 
 type UpdatePositionParams struct {
 	Trader           int64
+	TokenAddress     string
 	TotalMonCost     pgtype.Numeric
 	TotalTokenAmount pgtype.Numeric
 	UpdatedAt        pgtype.Timestamp
@@ -254,6 +255,7 @@ type UpdatePositionParams struct {
 func (q *Queries) UpdatePosition(ctx context.Context, arg UpdatePositionParams) error {
 	_, err := q.db.Exec(ctx, updatePosition,
 		arg.Trader,
+		arg.TokenAddress,
 		arg.TotalMonCost,
 		arg.TotalTokenAmount,
 		arg.UpdatedAt,

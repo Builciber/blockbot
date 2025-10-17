@@ -86,12 +86,12 @@ func (cfg *apiConfig) handlerProcessSellX(ctx context.Context, b *bot.Bot, msg *
 		Text:   "Processing request...",
 	})
 	token := userBalances.balances[userBalances.currBalanceIdx]
-	tokenDecimals, _ := strconv.Atoi(token.Decimals)
+	tokenDecimals := token.Decimals
 	executingMsg, _ := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: msg.Chat.ID,
 		Text:   "Executing sale...",
 	})
-	saleResult, err := cfg.handlerSell(ctx, telegramId, int(sellPercent), token.Address, uint8(tokenDecimals))
+	saleResult, err := cfg.handlerSell(ctx, telegramId, int(sellPercent), token.ContractAddress, uint8(tokenDecimals))
 	if err != nil {
 		errorMessage, found := strings.CutPrefix(err.Error(), "display to user: ")
 		if found {
@@ -111,7 +111,7 @@ func (cfg *apiConfig) handlerProcessSellX(ctx context.Context, b *bot.Bot, msg *
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    msg.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(saleResult.SoldAmount, ".", "\\.", 1), token.Symbol, strings.Replace(saleResult.ReceivedMon, ".", "\\.", 1), saleResult.TxHash),
+		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(saleResult.SoldAmount, 3), ".", "\\.", 1), token.Symbol, strings.Replace(displayDecimal(saleResult.ReceivedMon, 3), ".", "\\.", 1), saleResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     msg.Chat.ID,

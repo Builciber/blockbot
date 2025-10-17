@@ -6,14 +6,10 @@ import (
 	"log"
 	"math/big"
 	"slices"
-	"strconv"
-	"strings"
 
-	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -36,135 +32,88 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		log.Println(err.Error())
 		return
 	}
-	monorailRespBody, err := getWalletTokenBalance(walletAddress)
+	tokens, _, err := cfg.getWalletTokens(walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())
 		return
 	}
-	monorailRespBody, err = cfg.fillMissingPriceData(monorailRespBody)
+	tokens, err = cfg.fillMissingPriceData(tokens)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	portfolioValue, err := getPortfolioWorth(walletAddress)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())
 		return
 	}
 	const zeroAddress = "0x0000000000000000000000000000000000000000"
-	if len(monorailRespBody) == 0 || (len(monorailRespBody) == 1 && monorailRespBody[0].Address == zeroAddress) {
+	if len(tokens) == 0 || (len(tokens) == 1 && tokens[0].ContractAddress == zeroAddress) {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "You have no open positions. To buy a token and thus open a position, send it's ticker or token address in chat. Ensure you have enough MON for the purchase",
 			ReplyParameters: &models.ReplyParameters{
-				MessageID:                msg.ID,
+				MessageID:                update.Message.ID,
 				AllowSendingWithoutReply: true,
 			},
 		})
 		return
 	}
 	var monBalance string
-	for _, token := range monorailRespBody {
-		if token.Address == zeroAddress {
+	for _, token := range tokens {
+		if token.ContractAddress == zeroAddress {
 			monBalance = token.Balance
 			break
 		}
 	}
-	slices.SortFunc(monorailRespBody, func(tokenA, tokenB monorailBalancesResp) int {
-		if tokenA.MonValue == "" || tokenB.MonValue == "" {
+	slices.SortFunc(tokens, func(tokenA, tokenB Token) int {
+		if tokenA.UsdValue == "" || tokenB.UsdValue == "" {
 			return 0
 		}
-		tokenABalAsFloat, _ := new(big.Float).SetString(tokenA.MonValue)
-		tokenBBalAsFloat, _ := new(big.Float).SetString(tokenB.MonValue)
-		return tokenABalAsFloat.Cmp(tokenBBalAsFloat)
+		tokenAValAsFloat, _ := new(big.Float).SetString(tokenA.UsdValue)
+		tokenBValAsFloat, _ := new(big.Float).SetString(tokenB.UsdValue)
+		return tokenAValAsFloat.Cmp(tokenBValAsFloat)
 	})
-	slices.Reverse(monorailRespBody)
-	viewablePositions, err := cfg.removeHiddenPositions(ctx, telegramId, monorailRespBody)
+	slices.Reverse(tokens)
+	viewablePositions, err := cfg.removeHiddenPositions(ctx, telegramId, tokens)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())
 		return
 	}
-	token := viewablePositions[0]
-	pnlPercentFormatted := "N/A"
-	pnlFormatted := "N/A"
-	initialCostFormatted := "N/A"
-	priceFormatted := "N/A"
-	position, err := cfg.DB.CallGetPositionFunc(ctx, database.CallGetPositionFuncParams{Traderid: telegramId, Tokenaddress: token.Address})
-	if token.MonPerToken != "" {
-		currPricePerToken, _ := new(big.Float).SetString(token.MonPerToken)
-		priceFormatted = strings.Replace(formatFloat(currPricePerToken, 4), ".", "\\.", 1)
-		if err == nil {
-			initialMonCost, _ := new(big.Float).SetString(pgNumericToString(position.TotalMonCost))
-			totalTokenAmount, _ := new(big.Float).SetString(pgNumericToString(position.TotalTokenAmount))
-			currentMonValue := new(big.Float)
-			currentMonValue.Mul(currPricePerToken, totalTokenAmount)
-			pnl := new(big.Float)
-			pnl.Sub(currentMonValue, initialMonCost)
-			ratio := new(big.Float)
-			ratio.Quo(pnl, initialMonCost)
-			pnlPercent := new(big.Float)
-			pnlPercent.Mul(ratio, big.NewFloat(100))
-			replacer := strings.NewReplacer(".", "\\.", "-", "\\-", "+", "\\+")
-			pnlPercentFormatted = formatPnl(formatFloat(pnlPercent, 2))
-			pnlPercentFormatted = replacer.Replace(pnlPercentFormatted)
-			pnlFormatted = formatPnl(formatFloat(pnl, 3))
-			pnlFormatted = replacer.Replace(pnlFormatted)
-			initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
-		}
-	}
+	tokenMarketData, err := cfg.getMarketData(viewablePositions[0].ContractAddress)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); !(ok && pgErr.Code == "P0002") { // if not a `no_data_found` PL/pgsql error
-			b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-				Text:   "Something went wrong, please try again",
-			})
-			log.Println(err.Error())
-			return
-		}
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
 	}
-	monValueFormatted := "N/A"
-	usdValueFormatted := "N/A"
-	if token.MonValue != "" {
-		if val, _ := strconv.ParseFloat(token.MonValue, 64); val != 0 {
-			monValue, _ := new(big.Float).SetString(token.MonValue)
-			monValueFormatted = strings.Replace(formatFloat(monValue, 3), ".", "\\.", 1)
-		}
+	viewablePositions[0].MarketCap = tokenMarketData.MarketCap
+	viewablePositions[0].Liquidity = tokenMarketData.Liquidity
+	viewablePositions[0].Intervals = tokenMarketData.Intervals
+	viewablePositions[0].Tag = tokenMarketData.Tag
+	token := viewablePositions[0]
+	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, monBalance)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
 	}
-	tokenAmount, _ := new(big.Float).SetString(token.Balance)
-	if token.UsdPerToken != "" {
-		if val, _ := strconv.ParseFloat(token.UsdPerToken, 64); val != 0 {
-			usdPerToken, _ := new(big.Float).SetString(token.UsdPerToken)
-			usdValue := usdPerToken.Mul(tokenAmount, usdPerToken)
-			usdValueFormatted = strings.Replace(formatFloat(usdValue, 2), ".", "\\.", 1)
-		}
-	}
-	tokenBalance, _ := new(big.Float).SetString(token.Balance)
-	tokenBalanceFormatted := strings.Replace(formatFloat(tokenBalance, 4), ".", "\\.", 1)
-	monBalanceAsFloat, _ := new(big.Float).SetString(monBalance)
-	monBalanceFormatted := strings.Replace(formatFloat(monBalanceAsFloat, 4), ".", "\\.", 1)
-	totalPortfolioValueAsFloat, _ := new(big.Float).SetString(portfolioValue)
-	totalPortfolioValueFormatted := strings.Replace(formatFloat(totalPortfolioValueAsFloat, 4), ".", "\\.", 1)
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nPrice: *%s MON* \n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\nTotal Portfolio Value: *$%s*\n\n[*View Token on Explorer*](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", token.Symbol, token.Name, token.Address, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, priceFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, totalPortfolioValueFormatted, token.Address, token.Address)
 	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: msg.Chat.ID,
+			ChatID: update.Message.Chat.ID,
 			Text:   "Something went wrong, please try again",
 		})
 		log.Println(err.Error())
@@ -194,7 +143,7 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		},
 	}
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID:      msg.Chat.ID,
+		ChatID:      update.Message.Chat.ID,
 		ParseMode:   models.ParseModeMarkdown,
 		Text:        inlineText,
 		ReplyMarkup: keyboard,
@@ -205,10 +154,10 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 	}
 	cfg.userBalancesMu.Lock()
 	cfg.usersBalances[telegramID(telegramId)] = &userBalances{
-		balances:            viewablePositions,
-		currBalanceIdx:      0,
-		totalPortFolioValue: totalPortfolioValueFormatted,
-		monBalance:          monBalanceFormatted,
+		balances:       viewablePositions,
+		currBalanceIdx: 0,
+		monBalance:     monBalance,
 	}
 	cfg.userBalancesMu.Unlock()
+	cfg.sendBadgeMessage(ctx, b, update)
 }

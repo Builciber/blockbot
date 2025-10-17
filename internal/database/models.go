@@ -19,7 +19,10 @@ type Position struct {
 }
 
 type PrivateBetaTester struct {
-	TelegramUsername string
+	TelegramUsername     string
+	SentBadgeMsg         pgtype.Bool
+	SentFeedbackBadgeMsg pgtype.Bool
+	GaveFeedback         pgtype.Bool
 }
 
 type Setting struct {
@@ -53,6 +56,7 @@ type Transaction struct {
 
 type User struct {
 	TelegramID         int64
+	ChatID             int64
 	WalletAddress      string
 	ReferrerID         pgtype.Int8
 	ReferralCode       string

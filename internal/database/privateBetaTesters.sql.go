@@ -7,7 +7,68 @@ package database
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const gavefeedback = `-- name: Gavefeedback :one
+SELECT gave_feedback FROM private_beta_testers
+WHERE telegram_username = $1
+`
+
+func (q *Queries) Gavefeedback(ctx context.Context, telegramUsername string) (pgtype.Bool, error) {
+	row := q.db.QueryRow(ctx, gavefeedback, telegramUsername)
+	var gave_feedback pgtype.Bool
+	err := row.Scan(&gave_feedback)
+	return gave_feedback, err
+}
+
+const getBadgeMessageState = `-- name: GetBadgeMessageState :one
+SELECT sent_badge_msg, sent_feedback_badge_msg, gave_feedback FROM private_beta_testers
+WHERE telegram_username = $1
+`
+
+type GetBadgeMessageStateRow struct {
+	SentBadgeMsg         pgtype.Bool
+	SentFeedbackBadgeMsg pgtype.Bool
+	GaveFeedback         pgtype.Bool
+}
+
+func (q *Queries) GetBadgeMessageState(ctx context.Context, telegramUsername string) (GetBadgeMessageStateRow, error) {
+	row := q.db.QueryRow(ctx, getBadgeMessageState, telegramUsername)
+	var i GetBadgeMessageStateRow
+	err := row.Scan(&i.SentBadgeMsg, &i.SentFeedbackBadgeMsg, &i.GaveFeedback)
+	return i, err
+}
+
+const getUnmessagedUsers = `-- name: GetUnmessagedUsers :many
+SELECT telegram_username, sent_badge_msg, sent_feedback_badge_msg, gave_feedback FROM private_beta_testers WHERE sent_badge_msg = FALSE
+`
+
+func (q *Queries) GetUnmessagedUsers(ctx context.Context) ([]PrivateBetaTester, error) {
+	rows, err := q.db.Query(ctx, getUnmessagedUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PrivateBetaTester
+	for rows.Next() {
+		var i PrivateBetaTester
+		if err := rows.Scan(
+			&i.TelegramUsername,
+			&i.SentBadgeMsg,
+			&i.SentFeedbackBadgeMsg,
+			&i.GaveFeedback,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 const isBetaTester = `-- name: IsBetaTester :one
 SELECT EXISTS (SELECT 1 FROM private_beta_testers WHERE telegram_username = $1)
@@ -29,4 +90,24 @@ func (q *Queries) PrivateBetaTestersExists(ctx context.Context) (bool, error) {
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const sentFeedBackBadgeMsg = `-- name: SentFeedBackBadgeMsg :exec
+UPDATE private_beta_testers SET sent_feedback_badge_msg = TRUE
+WHERE telegram_username = $1
+`
+
+func (q *Queries) SentFeedBackBadgeMsg(ctx context.Context, telegramUsername string) error {
+	_, err := q.db.Exec(ctx, sentFeedBackBadgeMsg, telegramUsername)
+	return err
+}
+
+const sentTestBadgeMsg = `-- name: SentTestBadgeMsg :exec
+UPDATE private_beta_testers SET sent_badge_msg = TRUE
+WHERE telegram_username = $1
+`
+
+func (q *Queries) SentTestBadgeMsg(ctx context.Context, telegramUsername string) error {
+	_, err := q.db.Exec(ctx, sentTestBadgeMsg, telegramUsername)
+	return err
 }

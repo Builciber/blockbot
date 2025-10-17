@@ -1,6 +1,6 @@
 -- name: CreateUser :exec
-INSERT INTO users(telegram_id, wallet_address, referrer_id, referral_code, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO users(telegram_id, chat_id, wallet_address, referrer_id, referral_code, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: GetUser :one
 SELECT * FROM users
@@ -40,3 +40,7 @@ SELECT referralCode, referralCount, referralEarnings FROM getReferralData(telegr
 
 -- name: GetBuyCommandParams :one
 SELECT * FROM getBuyCommandParams(telegramId => $1);
+
+-- name: UpdateUserChatId :exec
+UPDATE users SET chat_id = $2, updated_at = NOW()::TIMESTAMP
+WHERE telegram_id = $1;

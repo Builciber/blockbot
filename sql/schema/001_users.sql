@@ -1,6 +1,7 @@
 -- +goose Up
 CREATE TABLE IF NOT EXISTS users (
     telegram_id BIGINT PRIMARY KEY,
+    chat_id BIGINT NOT NULL UNIQUE,
     wallet_address CHAR(42) NOT NULL UNIQUE,
     referrer_id BIGINT,
     referral_code CHAR(8) NOT NULL UNIQUE,

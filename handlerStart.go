@@ -47,6 +47,18 @@ func (cfg *apiConfig) handlerGenericStart(ctx context.Context, b *bot.Bot, updat
 		return
 	}
 	if isUser {
+		err = cfg.DB.UpdateUserChatId(ctx, database.UpdateUserChatIdParams{
+			TelegramID: telegramID,
+			ChatID:     update.Message.Chat.ID,
+		})
+		if err != nil {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Something went wrong, please try again",
+			})
+			log.Println(err.Error())
+			return
+		}
 		cfg.handlerHome(ctx, b, update)
 		return
 	}
@@ -126,6 +138,7 @@ func (cfg *apiConfig) modeViewCallback(ctx context.Context, b *bot.Bot, update *
 	case "mode_degen":
 		cfg.handlerBotModeDegen(ctx, b, update)
 	}
+	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -159,6 +172,7 @@ func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot,
 	default:
 		cfg.handlerGenericStart(ctx, b, update)
 	}
+	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handleTokenShare(ctx context.Context, b *bot.Bot, update *models.Update) {

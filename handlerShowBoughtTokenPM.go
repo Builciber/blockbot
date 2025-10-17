@@ -10,17 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tokenAddress string, walletAddress string) (string, error) {
-	token, err := cfg.getToken(tokenAddress, walletAddress)
-	if err != nil {
-		return "", err
-	}
-	getBalanceResp := getBalanceRespBody{}
-	err = WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramId}, &getBalanceResp)
-	if err != nil {
-		return "", err
-	}
-	monBalance := getBalanceResp.Balance
+func (cfg *apiConfig) handlerShowBoughttokenPM(ctx context.Context, telegramId int64, token Token, monBalance string) (string, error) {
 	monUsdPrice, err := getMONUSDPrice()
 	if err != nil {
 		return "", err
@@ -40,7 +30,8 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 		tokenBalance, _ := new(big.Float).SetString(token.Balance)
 		monValue := new(big.Float).Mul(currPricePerToken, tokenBalance)
 		monValueFormatted = strings.Replace(formatFloat(monValue, 3), ".", "\\.", 1)
-		usdValueFormatted = strings.Replace(displayDecimal(token.UsdValue, 2), ".", "\\.", 1)
+		usdValueAsFloat, _ := new(big.Float).SetString(token.UsdValue)
+		usdValueFormatted = strings.Replace(formatFloat(usdValueAsFloat, 2), ".", "\\.", 1)
 		priceFormatted = strings.Replace(displayDecimal(token.Price, 4), ".", "\\.", 1)
 		if err == nil {
 			initialMonCost, _ := new(big.Float).SetString(pgNumericToString(position.TotalMonCost))

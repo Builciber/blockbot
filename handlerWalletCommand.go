@@ -62,7 +62,7 @@ func (cfg *apiConfig) handlerWalletCommand(ctx context.Context, b *bot.Bot, upda
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.Message.Chat.ID,
 		ParseMode:   models.ParseModeMarkdown,
-		Text:        fmt.Sprintf("*Trading Wallet Information*:\n\nAddress:  `%s`\nBalance:  *%s* MON\n\nTap the address to copy it and send MON to deposit", walletAddress, strings.Replace(walletBalance, ".", "\\.", 1)),
+		Text:        fmt.Sprintf("*Trading Wallet Information*:\n\nAddress:  `%s`\nBalance:  *%s* MON\n\nTap the address to copy it and send MON to deposit", walletAddress, strings.Replace(displayDecimal(walletBalance, 3), ".", "\\.", 1)),
 		ReplyMarkup: keyboard,
 	})
 	if err != nil {
@@ -73,4 +73,5 @@ func (cfg *apiConfig) handlerWalletCommand(ctx context.Context, b *bot.Bot, upda
 		log.Println(err.Error())
 		return
 	}
+	cfg.sendBadgeMessage(ctx, b, update)
 }

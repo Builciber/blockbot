@@ -12,12 +12,13 @@ import (
 )
 
 const createUser = `-- name: CreateUser :exec
-INSERT INTO users(telegram_id, wallet_address, referrer_id, referral_code, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users(telegram_id, chat_id, wallet_address, referrer_id, referral_code, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateUserParams struct {
 	TelegramID    int64
+	ChatID        int64
 	WalletAddress string
 	ReferrerID    pgtype.Int8
 	ReferralCode  string
@@ -28,6 +29,7 @@ type CreateUserParams struct {
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.TelegramID,
+		arg.ChatID,
 		arg.WalletAddress,
 		arg.ReferrerID,
 		arg.ReferralCode,
@@ -108,7 +110,7 @@ func (q *Queries) GetReferralData(ctx context.Context, telegramid int64) (GetRef
 }
 
 const getUser = `-- name: GetUser :one
-SELECT telegram_id, wallet_address, referrer_id, referral_code, referrer_fee_percent, referral_earnings, created_at, updated_at FROM users
+SELECT telegram_id, chat_id, wallet_address, referrer_id, referral_code, referrer_fee_percent, referral_earnings, created_at, updated_at FROM users
 WHERE telegram_id = $1
 `
 
@@ -117,6 +119,7 @@ func (q *Queries) GetUser(ctx context.Context, telegramID int64) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.TelegramID,
+		&i.ChatID,
 		&i.WalletAddress,
 		&i.ReferrerID,
 		&i.ReferralCode,
@@ -185,6 +188,21 @@ type UpdateReferrerEarningsParams struct {
 
 func (q *Queries) UpdateReferrerEarnings(ctx context.Context, arg UpdateReferrerEarningsParams) error {
 	_, err := q.db.Exec(ctx, updateReferrerEarnings, arg.Telegramid, arg.Referrerearnings)
+	return err
+}
+
+const updateUserChatId = `-- name: UpdateUserChatId :exec
+UPDATE users SET chat_id = $2, updated_at = NOW()::TIMESTAMP
+WHERE telegram_id = $1
+`
+
+type UpdateUserChatIdParams struct {
+	TelegramID int64
+	ChatID     int64
+}
+
+func (q *Queries) UpdateUserChatId(ctx context.Context, arg UpdateUserChatIdParams) error {
+	_, err := q.db.Exec(ctx, updateUserChatId, arg.TelegramID, arg.ChatID)
 	return err
 }
 

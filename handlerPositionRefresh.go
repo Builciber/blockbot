@@ -28,7 +28,7 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		return
 	}
 	oldToken := userBalances.balances[userBalances.currBalanceIdx]
-	result, err := cfg.findToken(oldToken.Address, walletAddress)
+	token, err := cfg.getToken(oldToken.ContractAddress, walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -37,17 +37,7 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	filled, err := cfg.fillMissingPriceData([]monorailBalancesResp{result})
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	token := filled[0]
-	inlineText, err := cfg.showBoughtToken(ctx, telegramId, token, walletAddress)
+	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, userBalances.monBalance)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -96,15 +86,14 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		ReplyMarkup: keyboard,
 	})
 	userBalances.balances[userBalances.currBalanceIdx] = token
-	monBalanceFormatted, totalPortfolioValueFormatted := readMonBalanceAndPortfolioValueFromString(inlineText)
-	userBalances.totalPortFolioValue = totalPortfolioValueFormatted
+	monBalanceFormatted := readMonBalanceFromString(inlineText)
 	userBalances.monBalance = monBalanceFormatted
 	cfg.userBalancesMu.Lock()
 	cfg.usersBalances[telegramID(telegramId)] = userBalances
 	cfg.userBalancesMu.Unlock()
 }
 
-func readMonBalanceAndPortfolioValueFromString(str string) (string, string) {
+func readMonBalanceFromString(str string) string {
 	substring := "Wallet Balance: *"
 	index := strings.Index(str, substring)
 	startIndex := index + len(substring)
@@ -113,13 +102,14 @@ func readMonBalanceAndPortfolioValueFromString(str string) (string, string) {
 		endIndex++
 	}
 	monBalance := str[startIndex:endIndex]
-	substring = "Total Portfolio Value: *$"
+	monBalance = strings.Replace(monBalance, "\\.", ".", 1)
+	/*substring = "Total Portfolio Value: *$"
 	index = strings.Index(str, substring)
 	startIndex = index + len(substring)
 	endIndex = startIndex
 	for str[endIndex] != '*' {
 		endIndex++
 	}
-	portfolioValue := str[startIndex:endIndex]
-	return monBalance, portfolioValue
+	portfolioValue := str[startIndex:endIndex]*/
+	return monBalance
 }

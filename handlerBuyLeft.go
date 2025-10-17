@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/go-telegram/bot"
@@ -33,13 +32,13 @@ func (cfg *apiConfig) handlerBuyLeft(ctx context.Context, b *bot.Bot, update *mo
 		return
 	}
 	token := userBalances.balances[userBalances.currBalanceIdx]
-	tokenDecimals, _ := strconv.Atoi(token.Decimals)
+	tokenDecimals := token.Decimals
 	amount := pgNumericToString(buySellButtons.BuyButtonLeft)
 	executingMsg, _ := b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: update.CallbackQuery.Message.Message.Chat.ID,
 		Text:   "Executing purchase...",
 	})
-	buyResult, err := cfg.handlerBuy(ctx, telegramId, amount, token.Address, uint8(tokenDecimals))
+	buyResult, err := cfg.handlerBuy(ctx, telegramId, amount, token.ContractAddress, uint8(tokenDecimals))
 	if err != nil {
 		errorMessage, found := strings.CutPrefix(err.Error(), "display to user: ")
 		if found {
@@ -59,7 +58,7 @@ func (cfg *apiConfig) handlerBuyLeft(ctx context.Context, b *bot.Bot, update *mo
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.CallbackQuery.Message.Message.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(buyResult.BoughtAmount, ".", "\\.", 1), token.Symbol, strings.Replace(amount, ".", "\\.", 1), buyResult.TxHash),
+		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(buyResult.BoughtAmount, 3), ".", "\\.", 1), token.Symbol, strings.Replace(displayDecimal(amount, 3), ".", "\\.", 1), buyResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     update.CallbackQuery.Message.Message.Chat.ID,

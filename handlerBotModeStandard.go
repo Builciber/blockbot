@@ -74,6 +74,7 @@ func (cfg *apiConfig) handlerBotModeStandard(ctx context.Context, b *bot.Bot, up
 	creationTime := time.Now()
 	createUserParams := database.CreateUserParams{
 		TelegramID:    telegramID,
+		ChatID:        update.CallbackQuery.Message.Message.Chat.ID,
 		WalletAddress: resp.WalletAddress,
 		ReferrerID:    referrerID,
 		ReferralCode:  refCode,

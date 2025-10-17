@@ -26,5 +26,5 @@ var homeKeyboard = &models.InlineKeyboardMarkup{
 }
 
 func generateHomeMessage(balance string) string {
-	return fmt.Sprintf("You currently have a balance of *%s* MON\\.\n\nTo view and manage your open positions, tap the \"Portfolio 📊\" buttton\\.\n\nTo buy a token, enter a ticker or token address in chat\\.\n\nFor more information on your wallet and to export your seed phrase, tap the \"Wallet 💼\" button below\\.", strings.Replace(balance, ".", "\\.", 1))
+	return fmt.Sprintf("You currently have a balance of *%s* MON\\.\n\nTo view and manage your open positions, tap the \"Portfolio 📊\" buttton\\.\n\nTo buy a token, enter a ticker or token address in chat\\.\n\nFor more information on your wallet and to export your seed phrase, tap the \"Wallet 💼\" button below\\.", strings.Replace(displayDecimal(balance, 3), ".", "\\.", 1))
 }

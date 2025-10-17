@@ -25,26 +25,8 @@ func (cfg *apiConfig) handlerQuickViewRefresh(ctx context.Context, b *bot.Bot, u
 	splits := strings.Split(msg.Text, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")
 	tokenAddress := withTokenAddress[0:42]
-	result, err := cfg.findToken(tokenAddress, walletAddress)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	filled, err := cfg.fillMissingPriceData([]monorailBalancesResp{result})
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	token := filled[0]
-	inlineText, err := cfg.showBoughtToken(ctx, telegramId, token, walletAddress)
+	tokenSymbol := splits[1]
+	inlineText, err := cfg.showBoughtToken(ctx, telegramId, tokenAddress, walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -68,7 +50,7 @@ func (cfg *apiConfig) handlerQuickViewRefresh(ctx context.Context, b *bot.Bot, u
 				{Text: "Home 🏠︎", CallbackData: "quickView_home"},
 				{Text: "Close ❌", CallbackData: "quickView_close"},
 			}, {
-				{Text: token.Symbol, CallbackData: "quickView_symbol"},
+				{Text: tokenSymbol, CallbackData: "quickView_symbol"},
 			}, {
 				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "quickView_buyLeft"},
 				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "quickView_buyRight"},
