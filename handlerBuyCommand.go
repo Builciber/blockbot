@@ -130,7 +130,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 				},
 			},
 		}
-		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
 		if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
 			inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
 		}
@@ -153,7 +153,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		liquidityFieldValue = fmt.Sprintf("%s %s", liquidityFormatted, token.Symbol)
 		launchpad = "Nadfun"
 	}
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", token.Name, token.Symbol, token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
+	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
 	if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
 		inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
 	}
@@ -305,7 +305,7 @@ func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, upd
 				},
 			},
 		}
-		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
 		b.EditMessageText(ctx, &bot.EditMessageTextParams{
 			MessageID:   msg.ID,
 			ChatID:      msg.Chat.ID,
@@ -326,7 +326,7 @@ func (cfg *apiConfig) handlerBuyViewRefresh(ctx context.Context, b *bot.Bot, upd
 		liquidityFieldValue = fmt.Sprintf("%s %s", liquidityFormatted, token.Symbol)
 		launchpad = "Nadfun"
 	}
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", token.Name, token.Symbol, token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
+	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
 	b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		MessageID:   msg.ID,
 		ChatID:      msg.Chat.ID,

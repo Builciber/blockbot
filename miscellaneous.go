@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Builciber/blockbot/internal/database"
+	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -590,4 +591,8 @@ func abbreviateDecimal(decimal string) string {
 	divisor, _ := new(big.Float).SetString(fmt.Sprintf("1e+%d", powerOfTen-rem))
 	float.Quo(float, divisor)
 	return float.Text(byte('f'), 2) + unit
+}
+
+func escapeMarkdown(str string) string {
+	return bot.EscapeMarkdown(str)
 }

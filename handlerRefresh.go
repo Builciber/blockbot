@@ -54,7 +54,7 @@ func (cfg *apiConfig) handlerRefresh(ctx context.Context, b *bot.Bot, update *mo
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		MessageID:   update.CallbackQuery.Message.Message.ID,
 		ParseMode:   models.ParseModeMarkdown,
-		Text:        fmt.Sprintf("*Trading Wallet Information*:\n\nAddress:  `%s`\nBalance:  *%s* MON\n\nTap the address to copy it and send MON to deposit", walletAddress, strings.Replace(walletBalance, ".", "\\.", 1)),
+		Text:        fmt.Sprintf("*Trading Wallet Information*:\n\nAddress:  `%s`\nBalance:  *%s* MON\n\nTap the address to copy it and send MON to deposit", walletAddress, strings.Replace(displayDecimal(walletBalance, 3), ".", "\\.", 1)),
 		ReplyMarkup: keyboard,
 	})
 }

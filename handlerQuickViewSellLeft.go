@@ -20,7 +20,7 @@ func (cfg *apiConfig) handlerQuickViewSellLeft(ctx context.Context, b *bot.Bot, 
 	splits := strings.Split(msg.Text, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")
 	tokenAddress := withTokenAddress[0:42]
-	tokenSymbol := splits[1]
+	tokenSymbol := splits[0]
 	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
@@ -64,7 +64,7 @@ func (cfg *apiConfig) handlerQuickViewSellLeft(ctx context.Context, b *bot.Bot, 
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    update.CallbackQuery.Message.Message.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(saleResult.SoldAmount, 3), ".", "\\.", 1), tokenSymbol, strings.Replace(displayDecimal(saleResult.ReceivedMon, 3), ".", "\\.", 1), saleResult.TxHash),
+		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(saleResult.SoldAmount, 3), ".", "\\.", 1), escapeMarkdown(tokenSymbol), strings.Replace(displayDecimal(saleResult.ReceivedMon, 3), ".", "\\.", 1), saleResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     update.CallbackQuery.Message.Message.Chat.ID,
