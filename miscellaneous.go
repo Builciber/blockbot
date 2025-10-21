@@ -85,7 +85,7 @@ func getMONUSDPrice() (string, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode > 299 {
-		return "", err
+		return "", fmt.Errorf("non 2xx status code returned")
 	}
 	monPrice := MonUsdPrice{}
 	err = json.Unmarshal(body, &monPrice)
@@ -93,19 +93,6 @@ func getMONUSDPrice() (string, error) {
 		return "", err
 	}
 	return monPrice.Price, nil
-}
-
-func getTokenUSDPrice(monPerToken *big.Float) (*big.Float, error) {
-	price, err := getMONUSDPrice()
-	if err != nil {
-		return nil, err
-	}
-	tokenPrice, ok := new(big.Float).SetString(price)
-	if !ok {
-		return nil, fmt.Errorf("mon price unavailable")
-	}
-	tokenPrice.Mul(tokenPrice, monPerToken)
-	return tokenPrice, nil
 }
 
 func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBalancesResp, error) {
@@ -264,50 +251,6 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, error) {
 		}
 	}
 	return tokens, nil
-}
-
-/*func getPortfolioWorth(walletAddress string) (string, error) {
-	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/portfolio/%s/value", walletAddress)
-	res, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		return "", fmt.Errorf("non 2XX status code returned")
-	}
-	totalPortfolioValue := monorailTotalPortfolioResp{}
-	err = json.Unmarshal(body, &totalPortfolioValue)
-	if err != nil {
-		return "", err
-	}
-	return totalPortfolioValue.Value, nil
-}*/
-
-func getWalletTokenBalance(walletAddress string) ([]monorailBalancesResp, error) {
-	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/wallet/%s/balances", walletAddress)
-	res, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	res.Body.Close()
-	if res.StatusCode > 299 {
-		return nil, fmt.Errorf("non 2XX status code received")
-	}
-	monorailRespBody := []monorailBalancesResp{}
-	err = json.Unmarshal(body, &monorailRespBody)
-	if err != nil {
-		return nil, err
-	}
-	return monorailRespBody, nil
 }
 
 func displayDecimal(decimal string, precision int) string {
