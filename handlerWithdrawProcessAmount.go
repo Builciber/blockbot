@@ -41,8 +41,11 @@ func (cfg *apiConfig) handlerWithdrawProcessAmount(ctx context.Context, b *bot.B
 	}
 	telegramID := msg.From.ID
 	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(msg.Chat.ID)]
+	intSeq, ok := cfg.intSeqMap[chatID(msg.Chat.ID)]
 	cfg.mu.RUnlock()
+	if !ok {
+		return
+	}
 	requestBody := withdrawReqBody{
 		TelegramID: telegramID,
 		WithdrawTo: intSeq.retValues[intSeq.nextFuncIdx-1],

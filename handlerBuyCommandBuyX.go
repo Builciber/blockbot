@@ -100,8 +100,11 @@ func (cfg *apiConfig) handlerProcessBuyCommandBuyX(ctx context.Context, b *bot.B
 		return
 	}
 	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(msg.Chat.ID)]
+	intSeq, ok := cfg.intSeqMap[chatID(msg.Chat.ID)]
 	cfg.mu.RUnlock()
+	if !ok {
+		return
+	}
 	inlineMsgText := intSeq.retValues[0]
 	splits := strings.Split(inlineMsgText, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")

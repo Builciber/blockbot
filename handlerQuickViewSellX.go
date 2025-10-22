@@ -74,8 +74,11 @@ func (cfg *apiConfig) handlerProcessQuickViewSellX(ctx context.Context, b *bot.B
 	telegramId := msg.From.ID
 	chatId := chatID(msg.Chat.ID)
 	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(chatId)]
+	intSeq, ok := cfg.intSeqMap[chatID(chatId)]
 	cfg.mu.RUnlock()
+	if !ok {
+		return
+	}
 	inlineMsgText := intSeq.retValues[0]
 	splits := strings.Split(inlineMsgText, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")

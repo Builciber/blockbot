@@ -100,8 +100,11 @@ func (cfg *apiConfig) handlerProcessBuySlippage(ctx context.Context, b *bot.Bot,
 		return
 	}
 	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(msg.Chat.ID)]
+	intSeq, ok := cfg.intSeqMap[chatID(msg.Chat.ID)]
 	cfg.mu.RUnlock()
+	if !ok {
+		return
+	}
 	msgID, _ := strconv.ParseInt(intSeq.retValues[0], 10, 64)
 	_, err = b.EditMessageReplyMarkup(ctx, &bot.EditMessageReplyMarkupParams{
 		MessageID:   int(msgID),

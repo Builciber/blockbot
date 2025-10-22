@@ -19,8 +19,15 @@ func (cfg *apiConfig) handlerBotModeStandard(ctx context.Context, b *bot.Bot, up
 	defer cfg.endInteraction(update.CallbackQuery.Message.Message)
 	telegramID := update.CallbackQuery.From.ID
 	cfg.mu.RLock()
-	intSeq := cfg.intSeqMap[chatID(update.CallbackQuery.Message.Message.Chat.ID)]
+	intSeq, ok := cfg.intSeqMap[chatID(update.CallbackQuery.Message.Message.Chat.ID)]
 	cfg.mu.RUnlock()
+	if !ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "interaction expired. Please use the /start command to continue",
+		})
+		return
+	}
 	var referrerID pgtype.Int8
 	slice := strings.Split(intSeq.retValues[0], " ")
 	if len(slice) == 2 {
