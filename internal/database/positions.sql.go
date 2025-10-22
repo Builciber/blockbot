@@ -12,7 +12,7 @@ import (
 )
 
 const callGetPositionFunc = `-- name: CallGetPositionFunc :one
-SELECT trader, token_address, total_mon_cost, total_token_amount, CAST(total_mon_cost / total_token_amount AS NUMERIC) AS average_mon_price FROM getPosition($1, $2)
+SELECT trader, token_address, total_mon_cost, total_token_amount, created_at, CAST(total_mon_cost / total_token_amount AS NUMERIC) AS average_mon_price FROM getPosition($1, $2)
 `
 
 type CallGetPositionFuncParams struct {
@@ -25,6 +25,7 @@ type CallGetPositionFuncRow struct {
 	TokenAddress     string
 	TotalMonCost     pgtype.Numeric
 	TotalTokenAmount pgtype.Numeric
+	CreatedAt        pgtype.Timestamp
 	AverageMonPrice  pgtype.Numeric
 }
 
@@ -36,6 +37,7 @@ func (q *Queries) CallGetPositionFunc(ctx context.Context, arg CallGetPositionFu
 		&i.TokenAddress,
 		&i.TotalMonCost,
 		&i.TotalTokenAmount,
+		&i.CreatedAt,
 		&i.AverageMonPrice,
 	)
 	return i, err

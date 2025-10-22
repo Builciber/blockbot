@@ -26,7 +26,27 @@ func (cfg *apiConfig) handlerQuickViewRefresh(ctx context.Context, b *bot.Bot, u
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")
 	tokenAddress := withTokenAddress[0:42]
 	tokenSymbol := splits[1]
-	inlineText, err := cfg.showBoughtToken(ctx, telegramId, tokenAddress, walletAddress)
+	token, err := cfg.getToken(tokenAddress, walletAddress)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	getBalanceResp := getBalanceRespBody{}
+	err = WalletServiceCall("GET", fmt.Sprintf("%s/v1/balance", cfg.bwsOrigin), cfg.bwsApiKey, ReqBody{TelegramID: telegramId}, &getBalanceResp)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	monBalance := getBalanceResp.Balance
+	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, monBalance)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,

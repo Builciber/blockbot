@@ -8,9 +8,9 @@ import (
 
 func TestGenerateProfitCard(t *testing.T) {
 	data := PNLCardData{
-		TokenPair:      "CHOG/MON",
-		PercentageGain: "+45.67%",
-		TradeDuration:  formatDuration(20*time.Minute + 15*time.Second),
+		TokenPair:      "CHOGSTARRRRRRRRRRRRRR/MON",
+		PercentageGain: "+455555.67%",
+		TradeDuration:  formatDuration(259260 * time.Second),
 		ReferralCode:   "BBBBBBB",
 		IsProfit:       true,
 		BackgroundPath: profitBackground[2],
@@ -35,7 +35,7 @@ func TestGenerateProfitCard(t *testing.T) {
 
 func TestGenerateLossCard(t *testing.T) {
 	data := PNLCardData{
-		TokenPair:      "CHOG/MON",
+		TokenPair:      "HARRYPOTTEROBAMASONIC10INU/MON",
 		PercentageGain: "-23.45%",
 		TradeDuration:  formatDuration(1*time.Hour + 30*time.Minute),
 		ReferralCode:   "BBBBBBB",

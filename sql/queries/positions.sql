@@ -34,7 +34,7 @@ SELECT unhidePosition(traderId => $1, tokenAddress => $2);
 SELECT mutatePosition(traderId => $1, tokenAddress => $2, mon_cost => $3, token_amount => $4);
 
 -- name: CallGetPositionFunc :one
-SELECT trader, token_address, total_mon_cost, total_token_amount, CAST(total_mon_cost / total_token_amount AS NUMERIC) AS average_mon_price FROM getPosition($1, $2);
+SELECT trader, token_address, total_mon_cost, total_token_amount, created_at, CAST(total_mon_cost / total_token_amount AS NUMERIC) AS average_mon_price FROM getPosition($1, $2);
 
 -- name: MutatePositionSell :exec
 SELECT mutatePositionSell(traderId => $1, tokenAddress => $2, token_amount => $3);

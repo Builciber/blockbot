@@ -87,7 +87,7 @@ func (cfg *apiConfig) getWalletTokens(walletAddress string) ([]Token, float64, e
 		return nil, 0, err
 	}
 	if respBody.Code != 0 {
-		return nil, 0, fmt.Errorf(fmt.Sprintf("nonzero code returned: %d", respBody.Code))
+		return nil, 0, fmt.Errorf("nonzero code returned")
 	}
 	tokens := respBody.Result.Data
 	portfolioValue := 0.0
@@ -126,7 +126,7 @@ func (cfg *apiConfig) getTokenMarketDataBlockVision(contractAddress string) (tok
 		return tokenMarketData{}, err
 	}
 	if respBody.Code != 0 {
-		return tokenMarketData{}, fmt.Errorf(fmt.Sprintf("nonzero code returned: %d", respBody.Code))
+		return tokenMarketData{}, fmt.Errorf("nonzero code returned")
 	}
 	return respBody.Result, nil
 }

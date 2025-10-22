@@ -63,7 +63,7 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 	}
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); !(ok && pgErr.Code == "P0002") { // if not a `no_data_found` PL/pgsql error
-			return "", nil
+			return "", err
 		}
 	}
 	tokenBalance, _ := new(big.Float).SetString(token.Balance)

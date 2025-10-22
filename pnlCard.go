@@ -3,13 +3,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"image"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/fogleman/gg"
-	"github.com/golang/freetype/truetype"
 )
 
 type PNLCardData struct {
@@ -22,9 +19,6 @@ type PNLCardData struct {
 }
 
 const (
-	cardWidth  = 1351
-	cardHeight = 901
-
 	profitColor = "#3CFE92"
 	lossColor   = "#F54542"
 	labelColor  = "#9F9F9F"
@@ -45,91 +39,91 @@ var (
 )
 
 func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
-	dc := gg.NewContext(cardWidth, cardHeight)
-
-	bgFile, err := os.Open(data.BackgroundPath)
+	img, err := gg.LoadJPG(data.BackgroundPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open background: %w", err)
+		return nil, fmt.Errorf("failed to load background: %w", err)
 	}
-	defer bgFile.Close()
-
-	img, _, err := image.Decode(bgFile)
+	dc := gg.NewContextForImage(img)
+	tickerFontSize := 48.0
+	labelFontSize := 20.0
+	referralCodeFontSize := 32.0
+	percentageFontSize := 72.0
+	tickerFont, err := gg.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", tickerFontSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode background: %w", err)
+		return nil, fmt.Errorf("failed to load ticker font: %w", err)
 	}
-
-	dc.DrawImageAnchored(img, cardWidth/2, cardHeight/2, 0.5, 0.5)
-
-	tickerFontBytes, err := os.ReadFile("./fonts/TacticSansExtExd-Blk.ttf")
+	labelFont, err := gg.LoadFontFace("./fonts/TTFirsNeue-Regular.ttf", labelFontSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ticker font: %w", err)
+		return nil, fmt.Errorf("failed to load text font: %w", err)
 	}
-	tickerFont, err := truetype.Parse(tickerFontBytes)
+	percentageFont, err := gg.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", percentageFontSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ticker font: %w", err)
+		return nil, fmt.Errorf("failed to load percentage font: %w", err)
 	}
-
-	textFontBytes, err := os.ReadFile("./fonts/TTFirsNeue-DemiBold.ttf")
+	referralCodeFont, err := gg.LoadFontFace("./fonts/TTFirsNeue-DemiBold.ttf", referralCodeFontSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read text font: %w", err)
+		return nil, fmt.Errorf("failed to load referral code font: %w", err)
 	}
-	textFont, err := truetype.Parse(textFontBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse text font: %w", err)
-	}
-
 	mainColor := profitColor
 	if !data.IsProfit {
 		mainColor = lossColor
 	}
 
-	xLeft := 50.0
-
-	maxWidth := 320.0
 	tokenPair := strings.ToUpper(data.TokenPair)
-
-	fontSize := 54.0
-	if len(data.TokenPair) > 10 {
-		dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 46}))
-	}
-
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: fontSize}))
+	xLeft := 30.0
+	y := float64(dc.Height()) / 3.0
+	imgMidPointX := float64(dc.Width()) / 2.0
+	dc.SetFontFace(tickerFont)
 	dc.SetHexColor(textWhite)
-
-	if len(data.TokenPair) > 10 {
-		dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 46}))
+	tokenPairFontWidth, fontHeight := dc.MeasureString(tokenPair)
+	for tokenPairFontWidth+xLeft > imgMidPointX {
+		tickerFontSize -= 3
+		dc.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", tickerFontSize)
+		tokenPairFontWidth, fontHeight = dc.MeasureString(tokenPair)
 	}
+	dc.DrawString(tokenPair, xLeft, y)
 
-	y := 240.0
-	lineHeight := 1.2
-	dc.DrawStringWrapped(tokenPair, xLeft, y, 0, 0.5, maxWidth, lineHeight, gg.AlignLeft)
-	dc.DrawStringAnchored(data.TokenPair, xLeft, y, 0, 0.5)
-
-	y += 80
-	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 22}))
+	pnlLabel := "Unrealized PnL"
+	y += fontHeight + 40
+	dc.SetFontFace(labelFont)
 	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored("Unrealized PnL", xLeft, y, 0, 0.5)
+	_, fontHeight = dc.MeasureString(pnlLabel)
+	dc.DrawStringAnchored(pnlLabel, xLeft, y, 0, 0.5)
 
-	y += 60
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 68}))
+	y += fontHeight + 30
+	dc.SetFontFace(percentageFont)
 	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(data.PercentageGain, xLeft, y, 0, 0.5)
+	percentageFontWidth, fontHeight := dc.MeasureString(data.PercentageGain)
+	for percentageFontWidth+xLeft > imgMidPointX {
+		percentageFontSize -= 5
+		dc.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", percentageFontSize)
+		percentageFontWidth, fontHeight = dc.MeasureString(data.PercentageGain)
+	}
+	dc.DrawStringAnchored(data.PercentageGain, xLeft, y, 0.0, 0.5)
 
-	y += 50
-	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 18}))
+	duration := fmt.Sprintf("Duration: %s", data.TradeDuration)
+	y += fontHeight + 20
+	dc.SetFontFace(labelFont)
 	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored(fmt.Sprintf("duration %s", data.TradeDuration), xLeft, y, 0, 0.5)
+	dc.DrawString(duration, xLeft, y)
 
-	referralLabelY := 640.0
-	codeY := referralLabelY + 28
-
-	dc.SetFontFace(truetype.NewFace(textFont, &truetype.Options{Size: 16}))
+	referralLabelY := 4.5 * (float64(dc.Height()) / 6.0)
+	referralLabel := "Referral Link"
+	dc.SetFontFace(labelFont)
 	dc.SetHexColor(labelColor)
-	dc.DrawStringAnchored("Referral Code", xLeft, referralLabelY, 0, 0.5)
+	_, fontHeight = dc.MeasureString(referralLabel)
+	dc.DrawStringAnchored(referralLabel, xLeft, referralLabelY, 0, 0.5)
 
-	dc.SetFontFace(truetype.NewFace(tickerFont, &truetype.Options{Size: 28}))
+	referralCodeY := referralLabelY + fontHeight + 20
+	dc.SetFontFace(referralCodeFont)
 	dc.SetHexColor(mainColor)
-	dc.DrawStringAnchored(data.ReferralCode, xLeft, codeY, 0, 0.5)
+	referralCodeFontWidth, _ := dc.MeasureString(data.ReferralCode)
+	for referralCodeFontWidth+xLeft > imgMidPointX {
+		referralCodeFontSize -= 3
+		dc.LoadFontFace("./fonts/TTFirsNeue-DemiBold.ttf", referralCodeFontSize)
+		referralCodeFontWidth, _ = dc.MeasureString(data.ReferralCode)
+	}
+	dc.DrawStringAnchored(data.ReferralCode, xLeft, referralCodeY, 0, 0.5)
 
 	buf := new(bytes.Buffer)
 	if err := dc.EncodePNG(buf); err != nil {

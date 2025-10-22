@@ -169,6 +169,8 @@ func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot,
 	switch param[0] {
 	case "st":
 		cfg.handleTokenShare(ctx, b, update)
+	case "pnlcard":
+		cfg.handlerGeneratePnlCard(ctx, b, update)
 	default:
 		cfg.handlerGenericStart(ctx, b, update)
 	}
