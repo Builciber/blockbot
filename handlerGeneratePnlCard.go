@@ -18,6 +18,10 @@ import (
 )
 
 func (cfg *apiConfig) handlerGeneratePnlCard(ctx context.Context, b *bot.Bot, update *models.Update) {
+	b.DeleteMessage(ctx, &bot.DeleteMessageParams{
+		ChatID:    update.Message.Chat.ID,
+		MessageID: update.Message.ID,
+	})
 	telegramId := update.Message.From.ID
 	isUser, err := cfg.DB.IsExistingUser(ctx, telegramId)
 	if err != nil {
@@ -125,10 +129,6 @@ func (cfg *apiConfig) handlerGeneratePnlCard(ctx context.Context, b *bot.Bot, up
 				log.Println(err.Error())
 				return
 			}
-			b.DeleteMessage(ctx, &bot.DeleteMessageParams{
-				ChatID:    update.Message.Chat.ID,
-				MessageID: update.Message.ID,
-			})
 			params := &bot.SendPhotoParams{
 				ChatID: update.Message.Chat.ID,
 				Photo: &models.InputFileUpload{
