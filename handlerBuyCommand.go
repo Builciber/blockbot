@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/Builciber/blockbot/internal/database"
@@ -357,15 +356,13 @@ func (cfg *apiConfig) buyCommandViewCallback(ctx context.Context, b *bot.Bot, up
 }
 
 func (cfg *apiConfig) getTokenDecimals(tokenAddress string) (uint8, error) {
-	token, err := cfg.findToken(tokenAddress, "")
+	onchainData := getOnchainDataResp{}
+	zeroAddress := "0x0000000000000000000000000000000000000000"
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/onchain_data", cfg.bwsOrigin), cfg.bwsApiKey, getOnchainDataReq{tokenAddress, zeroAddress}, &onchainData)
 	if err != nil {
 		return 0, err
 	}
-	decimals, err := strconv.ParseUint(token.Decimals, 10, 8)
-	if err != nil {
-		return 0, err
-	}
-	return uint8(decimals), nil
+	return uint8(onchainData.TokenDecimals), nil
 }
 
 func (cfg *apiConfig) handlerAutoBuy(ctx context.Context, b *bot.Bot, msg *models.Message, params database.GetBuyCommandParamsRow, token Token) {
