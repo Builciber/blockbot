@@ -8,10 +8,10 @@ import (
 
 func TestGenerateProfitCard(t *testing.T) {
 	data := PNLCardData{
-		TokenPair:      "CHOGSTARRRRRRRRRRRRRR/MON",
-		PercentageGain: "+455555.67%",
+		TokenPair:      "CHOG/MON",
+		PercentageGain: "+45.67%",
 		TradeDuration:  formatDuration(259260 * time.Second),
-		ReferralCode:   "BBBBBBB",
+		ReferralCode:   "https://t.me/Monad_BlockBot?start=r_privatee",
 		IsProfit:       true,
 		BackgroundPath: profitBackground[2],
 	}
@@ -38,7 +38,7 @@ func TestGenerateLossCard(t *testing.T) {
 		TokenPair:      "HARRYPOTTEROBAMASONIC10INU/MON",
 		PercentageGain: "-23.45%",
 		TradeDuration:  formatDuration(1*time.Hour + 30*time.Minute),
-		ReferralCode:   "BBBBBBB",
+		ReferralCode:   "https://t.me/Monad_BlockBot?start=r_privatee",
 		IsProfit:       false,
 		BackgroundPath: lossBackgrounds[0],
 	}

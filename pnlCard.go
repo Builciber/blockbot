@@ -3,9 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"image/color"
+	"math"
 	"strings"
 	"time"
 
+	"github.com/boombuler/barcode"
+	"github.com/boombuler/barcode/qr"
 	"github.com/fogleman/gg"
 )
 
@@ -46,7 +50,6 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	dc := gg.NewContextForImage(img)
 	tickerFontSize := 48.0
 	labelFontSize := 20.0
-	referralCodeFontSize := 32.0
 	percentageFontSize := 72.0
 	tickerFont, err := gg.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", tickerFontSize)
 	if err != nil {
@@ -59,10 +62,6 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	percentageFont, err := gg.LoadFontFace("./fonts/TacticSansExtExd-Blk.ttf", percentageFontSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load percentage font: %w", err)
-	}
-	referralCodeFont, err := gg.LoadFontFace("./fonts/TTFirsNeue-DemiBold.ttf", referralCodeFontSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load referral code font: %w", err)
 	}
 	mainColor := profitColor
 	if !data.IsProfit {
@@ -107,23 +106,30 @@ func generatePNLCard(data PNLCardData) (*bytes.Buffer, error) {
 	dc.SetHexColor(labelColor)
 	dc.DrawString(duration, xLeft, y)
 
-	referralLabelY := 4.5 * (float64(dc.Height()) / 6.0)
-	referralLabel := "Referral Link"
+	referralLabelY := 4.0 * (float64(dc.Height()) / 6.0)
+	referralLabel := "Trade now"
 	dc.SetFontFace(labelFont)
-	dc.SetHexColor(labelColor)
-	_, fontHeight = dc.MeasureString(referralLabel)
-	dc.DrawStringAnchored(referralLabel, xLeft, referralLabelY, 0, 0.5)
+	dc.SetHexColor(profitColor)
+	fontWidth, fontHeight := dc.MeasureString(referralLabel)
+	minLength := int(math.Min(float64(dc.Width()/6), float64(dc.Height()/6)))
+	x := (float64(minLength)-fontWidth)/2 + xLeft
+	dc.DrawStringAnchored(referralLabel, x, referralLabelY, 0, 0.5)
 
-	referralCodeY := referralLabelY + fontHeight + 20
-	dc.SetFontFace(referralCodeFont)
-	dc.SetHexColor(mainColor)
-	referralCodeFontWidth, _ := dc.MeasureString(data.ReferralCode)
-	for referralCodeFontWidth+xLeft > imgMidPointX {
-		referralCodeFontSize -= 3
-		dc.LoadFontFace("./fonts/TTFirsNeue-DemiBold.ttf", referralCodeFontSize)
-		referralCodeFontWidth, _ = dc.MeasureString(data.ReferralCode)
+	referralCodeY := referralLabelY + fontHeight + 5
+	qrCode, err := qr.Encode(data.ReferralCode, qr.M, qr.Auto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate QR code: %w", err)
 	}
-	dc.DrawStringAnchored(data.ReferralCode, xLeft, referralCodeY, 0, 0.5)
+	scaledQr, err := barcode.ScaleWithFill(qrCode, minLength, minLength, color.Transparent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to scale QR code: %w", err)
+	}
+	qrWidth := scaledQr.Bounds().Size().X
+	qrHeight := scaledQr.Bounds().Size().Y
+	dc.DrawRoundedRectangle(xLeft, referralCodeY, float64(qrWidth), float64(qrHeight), 10)
+	dc.SetHexColor(textWhite)
+	dc.Fill()
+	dc.DrawImageAnchored(scaledQr, int(xLeft), int(referralCodeY), 0, 0)
 
 	buf := new(bytes.Buffer)
 	if err := dc.EncodePNG(buf); err != nil {
