@@ -73,5 +73,4 @@ func (cfg *apiConfig) handlerWalletCommand(ctx context.Context, b *bot.Bot, upda
 		log.Println(err.Error())
 		return
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }

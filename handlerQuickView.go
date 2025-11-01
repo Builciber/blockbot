@@ -32,5 +32,4 @@ func (cfg *apiConfig) quickViewCallback(ctx context.Context, b *bot.Bot, update 
 	case "quickView_refresh":
 		cfg.handlerQuickViewRefresh(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }

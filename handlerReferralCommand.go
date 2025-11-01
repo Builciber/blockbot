@@ -36,5 +36,4 @@ func (cfg *apiConfig) handlerReferralCommand(ctx context.Context, b *bot.Bot, up
 		ParseMode: models.ParseModeMarkdown,
 		Text:      fmt.Sprintf("*Referral Information*\n\nYour referral link: https://t\\.me/Monad\\_BlockBot?start\\=r\\_%s\n\nReferrals: *%d*\n\nTotal referral earnings: %s MON", referralCode, referralData.Referralcount.Int32, strings.Replace(displayDecimal(referralEarnings, 2), ".", "\\.", 1)),
 	})
-	cfg.sendBadgeMessage(ctx, b, update)
 }

@@ -95,5 +95,4 @@ func (cfg *apiConfig) walletViewCallback(ctx context.Context, b *bot.Bot, update
 	case "wallet_refresh":
 		cfg.handlerRefresh(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }

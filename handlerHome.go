@@ -43,7 +43,6 @@ func (cfg *apiConfig) handlerHome(ctx context.Context, b *bot.Bot, update *model
 		log.Println(err.Error())
 		return
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func handlerPinButton(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -84,7 +83,6 @@ func (cfg *apiConfig) handlerHomeCallback(ctx context.Context, b *bot.Bot, updat
 	case "home_buy_close":
 		cfg.handlerCloseButton(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handlerHomeBuy(ctx context.Context, b *bot.Bot, update *models.Update) {

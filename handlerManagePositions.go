@@ -210,7 +210,6 @@ func (cfg *apiConfig) positionsViewCallback(ctx context.Context, b *bot.Bot, upd
 	case "positions_refresh":
 		cfg.handlerPositionRefresh(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func formatPnl(pnl string) string {

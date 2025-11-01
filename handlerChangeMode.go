@@ -50,7 +50,6 @@ func (cfg *apiConfig) handlerChangeMode(ctx context.Context, b *bot.Bot, update 
 		log.Println(err.Error())
 		return
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) changeModeViewCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -64,7 +63,6 @@ func (cfg *apiConfig) changeModeViewCallback(ctx context.Context, b *bot.Bot, up
 	case "change_mode_degen":
 		cfg.handlerChangeBotModeDegen(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handlerChangeBotModeDegen(ctx context.Context, b *bot.Bot, update *models.Update) {

@@ -352,7 +352,6 @@ func (cfg *apiConfig) buyCommandViewCallback(ctx context.Context, b *bot.Bot, up
 	case "buy_refresh":
 		cfg.handlerBuyViewRefresh(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) getTokenDecimals(tokenAddress string) (uint8, error) {

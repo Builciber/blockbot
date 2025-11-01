@@ -138,7 +138,6 @@ func (cfg *apiConfig) modeViewCallback(ctx context.Context, b *bot.Bot, update *
 	case "mode_degen":
 		cfg.handlerBotModeDegen(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -157,7 +156,6 @@ func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot,
 	default:
 		cfg.handlerGenericStart(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
 
 func (cfg *apiConfig) handleTokenShare(ctx context.Context, b *bot.Bot, update *models.Update) {

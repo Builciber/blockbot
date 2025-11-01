@@ -159,5 +159,4 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		monBalance:     monBalance,
 	}
 	cfg.userBalancesMu.Unlock()
-	cfg.sendBadgeMessage(ctx, b, update)
 }

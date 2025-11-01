@@ -74,5 +74,4 @@ func (cfg *apiConfig) settingsViewCallback(ctx context.Context, b *bot.Bot, upda
 	case "settings_close":
 		cfg.handlerCloseButton(ctx, b, update)
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }

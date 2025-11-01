@@ -51,5 +51,4 @@ func (cfg *apiConfig) handlerSettingsCommand(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	cfg.sendBadgeMessage(ctx, b, update)
 }
