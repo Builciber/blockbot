@@ -142,23 +142,6 @@ func (cfg *apiConfig) modeViewCallback(ctx context.Context, b *bot.Bot, update *
 }
 
 func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot, update *models.Update) {
-	isBetaTester, err := cfg.DB.IsBetaTester(ctx, strings.ToLower(update.Message.From.Username))
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	if !isBetaTester {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			ParseMode: models.ParseModeMarkdown,
-			Text:      "*Access Denied*\\.\n\nYou are not a whitelisted private Beta tester\\. Please come back when I'm open to the public\\.",
-		})
-		return
-	}
 	split := strings.Split(update.Message.Text, " ")
 	if len(split) == 1 {
 		cfg.handlerGenericStart(ctx, b, update)
