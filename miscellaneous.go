@@ -85,7 +85,7 @@ func getMONUSDPrice() (string, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode > 299 {
-		return "", fmt.Errorf("non 2xx status code returned")
+		return "", fmt.Errorf("failed to fetch MONUSD price: %d status code returned", res.StatusCode)
 	}
 	monPrice := MonUsdPrice{}
 	err = json.Unmarshal(body, &monPrice)
@@ -107,7 +107,7 @@ func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBal
 	}
 	res.Body.Close()
 	if res.StatusCode > 299 {
-		return monorailBalancesResp{}, fmt.Errorf("non 2xx status code returned")
+		return monorailBalancesResp{}, fmt.Errorf("failed to find token %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
 	monorailRespBody := []monorailBalancesResp{}
 	err = json.Unmarshal(body, &monorailRespBody)
@@ -177,7 +177,7 @@ func (cfg *apiConfig) getNadfunTokenPrice(tokenAddress string) (string, error) {
 	}
 	res.Body.Close()
 	if res.StatusCode > 299 {
-		return "", fmt.Errorf("non 2xx status code returned")
+		return "", fmt.Errorf("failed to fetch Nadfun token price for %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
 	price := NadfunTokenPrice{}
 	err = json.Unmarshal(body, &price)
@@ -346,7 +346,7 @@ func (cfg *apiConfig) getNadfunTokenPriceChange(tokenAddress, interval string) (
 	}
 	res.Body.Close()
 	if res.StatusCode > 299 {
-		return nadfunTokenPriceChange{}, fmt.Errorf("non 2xx status code returned")
+		return nadfunTokenPriceChange{}, fmt.Errorf("failed to fetch Nadfun token prices changes for %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
 	priceChange := nadfunTokenPriceChange{}
 	err = json.Unmarshal(body, &priceChange)

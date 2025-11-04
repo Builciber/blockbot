@@ -79,7 +79,7 @@ func (cfg *apiConfig) getWalletTokens(walletAddress string) ([]Token, float64, e
 		return nil, 0, err
 	}
 	if resp.StatusCode > 299 {
-		return nil, 0, fmt.Errorf("failed to fetch wallet tokens")
+		return nil, 0, fmt.Errorf("failed to fetch wallet tokens for wallet address %s: %d status code returned", walletAddress, resp.StatusCode)
 	}
 	respBody := blockVisionWalletTokensAPIResp{}
 	err = json.Unmarshal(body, &respBody)
@@ -118,7 +118,7 @@ func (cfg *apiConfig) getTokenMarketDataBlockVision(contractAddress string) (tok
 		return tokenMarketData{}, err
 	}
 	if resp.StatusCode > 299 {
-		return tokenMarketData{}, fmt.Errorf("failed to fetch token market data")
+		return tokenMarketData{}, fmt.Errorf("failed to fetch token market data for %s: %d status code returned", contractAddress, resp.StatusCode)
 	}
 	respBody := blockVisionTokenMarketDataResp{}
 	err = json.Unmarshal(body, &respBody)
