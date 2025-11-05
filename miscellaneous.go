@@ -177,6 +177,16 @@ func (cfg *apiConfig) getNadfunTokenPrice(tokenAddress string) (string, error) {
 	}
 	res.Body.Close()
 	if res.StatusCode > 299 {
+		if res.StatusCode == 500 {
+			errorResp := ErrorResp{}
+			err = json.Unmarshal(body, &errorResp)
+			if err != nil {
+				return "", err
+			}
+			if strings.Contains(errorResp.Error, "no rows") {
+				return "", nil
+			}
+		}
 		return "", fmt.Errorf("failed to fetch Nadfun token price for %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
 	price := NadfunTokenPrice{}
