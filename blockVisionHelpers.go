@@ -91,10 +91,14 @@ func (cfg *apiConfig) getWalletTokens(walletAddress string) ([]Token, float64, e
 	}
 	tokens := respBody.Result.Data
 	portfolioValue := 0.0
-	for i := range tokens {
-		value, err := strconv.ParseFloat(tokens[i].UsdValue, 64)
+	for i, token := range tokens {
+		value, err := strconv.ParseFloat(token.UsdValue, 64)
 		if err != nil {
 			continue
+		}
+		if price, _ := strconv.ParseFloat(token.Price, 64); value > 0 && price == 0 {
+			tokenAmount, _ := strconv.ParseFloat(token.Balance, 64)
+			tokens[i].Price = strconv.FormatFloat(value/tokenAmount, byte('f'), -1, 64)
 		}
 		portfolioValue += value
 	}
