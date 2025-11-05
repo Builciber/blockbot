@@ -482,12 +482,12 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 	}
 	var marketData tokenMarketData
 	if onchainData.Tag == "Nadfun" {
-		marketData, err = cfg.getNadfunTokenMarketData(tokenAddress)
+		marketData, err = cfg.getNadfunTokenMarketData(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
 		}
 	} else {
-		marketData, err = cfg.getTokenMarketDataBlockVision(tokenAddress)
+		marketData, err = cfg.getTokenMarketDataBlockVision(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
 		}
