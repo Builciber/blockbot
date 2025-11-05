@@ -91,17 +91,6 @@ func main() {
 		userBalancesMu:    usersBalancesMu,
 	}
 
-	exists, err := cfg.DB.PrivateBetaTestersExists(ctx)
-	if err != nil {
-		log.Fatal("failed to insert beta testers into DB")
-	}
-	if !exists {
-		err = cfg.insertTestersUsernames(ctx)
-		if err != nil {
-			log.Fatal("failed to insert beta testers into DB")
-		}
-	}
-
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
 		bot.WithWebhookSecretToken(tgWebhookSecret),
