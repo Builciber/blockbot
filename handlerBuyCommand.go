@@ -72,6 +72,14 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 	} else {
 		token, err = cfg.getToken(tokenIdentifier, walletAddress)
 		if err != nil {
+			errorMessage, found := strings.CutPrefix(err.Error(), "display to user: ")
+			if found {
+				b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: msg.Chat.ID,
+					Text:   errorMessage,
+				})
+				return
+			}
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: msg.Chat.ID,
 				Text:   "Something went wrong, please try again",
