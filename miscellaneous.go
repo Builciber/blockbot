@@ -232,18 +232,20 @@ func (cfg *apiConfig) getNadfunTokenPrices(tokenAddresses []string) (map[string]
 
 func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, error) {
 	tokenAddresses := []string{}
+	addressToPrice := make(map[string]string)
 	for _, token := range tokens {
 		if token.Price == "0" || token.Price == "" {
 			tokenAddresses = append(tokenAddresses, token.ContractAddress)
+			addressToPrice[token.ContractAddress] = ""
 		}
 	}
 	if len(tokenAddresses) == 0 {
 		return tokens, nil
 	}
-	addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
+	/*addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
 	if err != nil {
 		return nil, err
-	}
+	}*/
 	monPrice, err := getMONUSDPrice()
 	if err != nil {
 		return nil, err
@@ -470,13 +472,13 @@ func (cfg *apiConfig) getMarketData(tokenAddress string) (tokenMarketData, error
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	if onchainData.Tag == "Nadfun" {
+	/*if onchainData.Tag == "Nadfun" {
 		marketData, err := cfg.getNadfunTokenMarketData(tokenAddress)
 		if err != nil {
 			return tokenMarketData{}, err
 		}
 		return marketData, nil
-	}
+	}*/
 	marketData, err := cfg.getTokenMarketDataBlockVision(tokenAddress)
 	if err != nil {
 		return tokenMarketData{}, err
@@ -491,7 +493,7 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 		return Token{}, err
 	}
 	var marketData tokenMarketData
-	if onchainData.Tag == "Nadfun" {
+	/*if onchainData.Tag == "Nadfun" {
 		marketData, err = cfg.getNadfunTokenMarketData(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
@@ -501,6 +503,10 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 		if err != nil {
 			return Token{}, err
 		}
+	}*/
+	marketData, err = cfg.getTokenMarketDataBlockVision(onchainData.TokenAddress)
+	if err != nil {
+		return Token{}, err
 	}
 	tokenBalance, _ := new(big.Float).SetString(onchainData.TokenBalance)
 	usdValue, _ := new(big.Float).SetString(marketData.Price)
