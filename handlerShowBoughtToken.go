@@ -33,6 +33,10 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 	monValueFormatted := "N/A"
 	usdValueFormatted := "N/A"
 	position, err := cfg.DB.CallGetPositionFunc(ctx, database.CallGetPositionFuncParams{Traderid: telegramId, Tokenaddress: token.ContractAddress})
+	if err == nil {
+		initialMonCost, _ := new(big.Float).SetString(pgNumericToString(position.TotalMonCost))
+		initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
+	}
 	if token.Price != "" && token.Price != "0" {
 		tokenUsdPrice, _ := new(big.Float).SetString(token.Price)
 		currPricePerToken := new(big.Float)
@@ -58,7 +62,7 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 			pnlPercentFormatted = replacer.Replace(pnlPercentFormatted)
 			pnlFormatted = formatPnl(formatFloat(pnl, 3))
 			pnlFormatted = replacer.Replace(pnlFormatted)
-			initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
+			//initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
 		}
 	}
 	if err != nil {
