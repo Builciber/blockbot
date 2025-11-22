@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math/big"
 	"slices"
+	"strconv"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -33,7 +33,7 @@ func (cfg *apiConfig) handlerManagePositions(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	tokens, _, err := cfg.getWalletTokens(walletAddress)
+	tokens, netWorth, err := cfg.getWalletTokens(walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -88,7 +88,7 @@ func (cfg *apiConfig) handlerManagePositions(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	tokenMarketData, err := cfg.getMarketData(viewablePositions[0].ContractAddress)
+	err = cfg.fetchOverviewData(viewablePositions)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -97,21 +97,9 @@ func (cfg *apiConfig) handlerManagePositions(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	viewablePositions[0].MarketCap = tokenMarketData.MarketCap
-	viewablePositions[0].Liquidity = tokenMarketData.Liquidity
-	viewablePositions[0].Intervals = tokenMarketData.Intervals
-	viewablePositions[0].Tag = tokenMarketData.Tag
-	token := viewablePositions[0]
-	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, monBalance)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
+	netWorthString := strconv.FormatFloat(netWorth, byte('f'), 2, 64)
+	startIndex := 0
+	inlineText, err := cfg.constructOverviewString(ctx, viewablePositions, telegramId, startIndex, netWorthString, monBalance, len(viewablePositions))
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -126,22 +114,20 @@ func (cfg *apiConfig) handlerManagePositions(ctx context.Context, b *bot.Bot, up
 				{Text: "Home 🏠︎", CallbackData: "positions_home"},
 				{Text: "Close ❌", CallbackData: "positions_close"},
 			}, {
-				{Text: token.Symbol, CallbackData: "positions_symbol"},
-			}, {
 				{Text: "◀️ Prev", CallbackData: "positions_prev"},
 				{Text: "Next ▶️", CallbackData: "positions_next"},
-			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "positions_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "positions_buyRight"},
-				{Text: "Buy X MON", CallbackData: "positions_buyX"},
-			}, {
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "positions_sellLeft"},
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "positions_sellRight"},
-				{Text: "Sell X %", CallbackData: "positions_sellX"},
-			}, {
-				{Text: "Refresh ⟳", CallbackData: "positions_refresh"},
 			},
 		},
+	}
+	if len(viewablePositions) <= 10 {
+		keyboard = &models.InlineKeyboardMarkup{
+			InlineKeyboard: [][]models.InlineKeyboardButton{
+				{
+					{Text: "Home 🏠︎", CallbackData: "positions_home"},
+					{Text: "Close ❌", CallbackData: "positions_close"},
+				},
+			},
+		}
 	}
 	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
@@ -155,9 +141,11 @@ func (cfg *apiConfig) handlerManagePositions(ctx context.Context, b *bot.Bot, up
 	}
 	cfg.userBalancesMu.Lock()
 	cfg.usersBalances[telegramID(telegramId)] = &userBalances{
-		balances:       viewablePositions,
-		currBalanceIdx: 0,
-		monBalance:     monBalance,
+		balances:            viewablePositions,
+		currBalanceIdx:      0,
+		steps:               1,
+		monBalance:          monBalance,
+		totalPortFolioValue: netWorthString,
 	}
 	cfg.userBalancesMu.Unlock()
 }

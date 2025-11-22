@@ -153,6 +153,8 @@ func (cfg *apiConfig) handlerStartParamCallback(ctx context.Context, b *bot.Bot,
 		cfg.handleTokenShare(ctx, b, update)
 	case "pnlcard":
 		cfg.handlerGeneratePnlCard(ctx, b, update)
+	case "position":
+		cfg.handlerDisplayPositionAtIndex(ctx, b, update)
 	default:
 		cfg.handlerGenericStart(ctx, b, update)
 	}

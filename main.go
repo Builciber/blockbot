@@ -50,6 +50,7 @@ type telegramID int64
 type userBalances struct {
 	balances            []Token
 	currBalanceIdx      int
+	steps               int
 	totalPortFolioValue string
 	monBalance          string
 }

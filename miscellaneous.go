@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"github.com/Builciber/blockbot/internal/database"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -554,4 +556,116 @@ func abbreviateDecimal(decimal string) string {
 
 func escapeMarkdown(str string) string {
 	return bot.EscapeMarkdown(str)
+}
+
+type marketData struct {
+	data         tokenMarketData
+	tokenAddress string
+}
+
+func (cfg *apiConfig) getMarketDataMulti(tokenAddresses []string) (map[string]tokenMarketData, error) {
+	marketDataChan := make(chan marketData, len(tokenAddresses))
+	tokenAddressToMarketData := make(map[string]tokenMarketData)
+	errChan := make(chan error)
+	for _, tokenAddress := range tokenAddresses {
+		go func(_tokenAddress string, resultChan chan<- marketData, errChan chan<- error) {
+			data, err := cfg.getMarketData(_tokenAddress)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			resultChan <- marketData{
+				data:         data,
+				tokenAddress: _tokenAddress,
+			}
+		}(tokenAddress, marketDataChan, errChan)
+	}
+	for i := 0; i < len(tokenAddresses); i++ {
+		select {
+		case result := <-marketDataChan:
+			tokenAddressToMarketData[result.tokenAddress] = result.data
+		case err := <-errChan:
+			return nil, err
+		}
+	}
+	return tokenAddressToMarketData, nil
+}
+
+type position struct {
+	data         database.CallGetPositionFuncRow
+	tokenAddress string
+}
+
+func (cfg *apiConfig) CallGetPositionFuncMulti(ctx context.Context, tokenAddresses []string, telegramId int64) (map[string]database.CallGetPositionFuncRow, error) {
+	positionsChan := make(chan position, len(tokenAddresses))
+	tokenAddressToPosition := make(map[string]database.CallGetPositionFuncRow)
+	errChan := make(chan error)
+	for _, tokenAddress := range tokenAddresses {
+		go func(_tokenAddress string, resultChan chan<- position, errChan chan<- error) {
+			pos, err := cfg.DB.CallGetPositionFunc(ctx, database.CallGetPositionFuncParams{Traderid: telegramId, Tokenaddress: _tokenAddress})
+			if err != nil {
+				if pgErr, ok := err.(*pgconn.PgError); !(ok && pgErr.Code == "P0002") { // if not a `no_data_found` PL/pgsql error
+					errChan <- err
+					return
+				}
+			}
+			resultChan <- position{
+				data:         pos,
+				tokenAddress: _tokenAddress,
+			}
+		}(tokenAddress, positionsChan, errChan)
+	}
+	for range tokenAddresses {
+		select {
+		case result := <-positionsChan:
+			tokenAddressToPosition[result.tokenAddress] = result.data
+		case err := <-errChan:
+			return nil, err
+		}
+	}
+	return tokenAddressToPosition, nil
+}
+
+func (cfg *apiConfig) fetchOverviewData(tokens []Token) error {
+	listSize := min(len(tokens), 10)
+	tokenAddresses := make([]string, listSize)
+	for i := range listSize {
+		tokenAddresses[i] = tokens[i].ContractAddress
+	}
+	tokensMarketData, err := cfg.getMarketDataMulti(tokenAddresses)
+	if err != nil {
+		return err
+	}
+	for i := range listSize {
+		tokens[i].MarketCap = tokensMarketData[tokenAddresses[i]].MarketCap
+		tokens[i].Liquidity = tokensMarketData[tokenAddresses[i]].Liquidity
+		tokens[i].Intervals = tokensMarketData[tokenAddresses[i]].Intervals
+		tokens[i].Tag = tokensMarketData[tokenAddresses[i]].Tag
+	}
+	return nil
+}
+
+func (cfg *apiConfig) constructOverviewString(ctx context.Context, tokens []Token, telegramId int64, startIndex int, netWorth string, monBalance string, portfolioSize int) (string, error) {
+	listSize := min(len(tokens), 10)
+	tokenAddresses := make([]string, listSize)
+	for i := range listSize {
+		tokenAddresses[i] = tokens[i].ContractAddress
+	}
+	positions, err := cfg.CallGetPositionFuncMulti(ctx, tokenAddresses, telegramId)
+	if err != nil {
+		return "", err
+	}
+	monUsdPrice, err := getMONUSDPrice()
+	if err != nil {
+		return "", err
+	}
+	builder := new(strings.Builder)
+	builder.WriteString("*Positions Overview:*\n\n")
+	for i := range listSize {
+		position := positions[tokenAddresses[i]]
+		serial := startIndex + i + 1
+		cfg.handlerShowBoughtTokenBrief(&tokens[i], position, monUsdPrice, serial, builder)
+	}
+	builder.WriteString(strings.ReplaceAll(fmt.Sprintf("Wallet Balance: *%s MON*\nPortfolio Size: *%d tokens*\nTotal Portfolio Value: *$%s*", displayDecimal(monBalance, 4), portfolioSize, displayDecimal(netWorth, 2)), ".", "\\."))
+	return builder.String(), nil
 }

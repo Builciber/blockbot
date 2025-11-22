@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strings"
 
@@ -18,7 +17,10 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 	if !ok {
 		return
 	}
-	walletAddress, err := cfg.DB.GetWalletAddress(ctx, telegramId)
+	startIndex := (userBalances.steps - 1) * 10
+	endIndex := userBalances.steps * 10
+	tokens := userBalances.balances[startIndex:endIndex]
+	err := cfg.fetchOverviewData(tokens)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -27,26 +29,7 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		log.Println(err.Error())
 		return
 	}
-	oldToken := userBalances.balances[userBalances.currBalanceIdx]
-	token, err := cfg.getToken(oldToken.ContractAddress, walletAddress)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, userBalances.monBalance)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
+	inlineText, err := cfg.constructOverviewString(ctx, tokens, telegramId, startIndex, userBalances.totalPortFolioValue, userBalances.monBalance, len(userBalances.balances))
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -61,22 +44,24 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 				{Text: "Home 🏠︎", CallbackData: "positions_home"},
 				{Text: "Close ❌", CallbackData: "positions_close"},
 			}, {
-				{Text: token.Symbol, CallbackData: "positions_symbol"},
-			}, {
 				{Text: "◀️ Prev", CallbackData: "positions_prev"},
 				{Text: "Next ▶️", CallbackData: "positions_next"},
-			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "positions_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "positions_buyRight"},
-				{Text: "Buy X MON", CallbackData: "positions_buyX"},
-			}, {
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "positions_sellLeft"},
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "positions_sellRight"},
-				{Text: "Sell X %", CallbackData: "positions_sellX"},
 			}, {
 				{Text: "Refresh ⟳", CallbackData: "positions_refresh"},
 			},
 		},
+	}
+	if len(tokens) <= 10 {
+		keyboard = &models.InlineKeyboardMarkup{
+			InlineKeyboard: [][]models.InlineKeyboardButton{
+				{
+					{Text: "Home 🏠︎", CallbackData: "positions_home"},
+					{Text: "Close ❌", CallbackData: "positions_close"},
+				}, {
+					{Text: "Refresh ⟳", CallbackData: "positions_refresh"},
+				},
+			},
+		}
 	}
 	b.EditMessageText(ctx, &bot.EditMessageTextParams{
 		MessageID:   update.CallbackQuery.Message.Message.ID,
@@ -85,11 +70,13 @@ func (cfg *apiConfig) handlerPositionRefresh(ctx context.Context, b *bot.Bot, up
 		ChatID:      update.CallbackQuery.Message.Message.Chat.ID,
 		ReplyMarkup: keyboard,
 	})
-	userBalances.balances[userBalances.currBalanceIdx] = token
-	monBalanceFormatted := readMonBalanceFromString(inlineText)
-	userBalances.monBalance = monBalanceFormatted
 	cfg.userBalancesMu.Lock()
-	cfg.usersBalances[telegramID(telegramId)] = userBalances
+	ub := cfg.usersBalances[telegramID(telegramId)]
+	idx := 0
+	for i := startIndex; i < endIndex; i++ {
+		ub.balances[i] = tokens[idx]
+		idx++
+	}
 	cfg.userBalancesMu.Unlock()
 }
 
