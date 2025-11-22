@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/go-telegram/bot"
@@ -17,12 +16,17 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 	if !ok {
 		return
 	}
-	if userBalances.currBalanceIdx == 0 {
+	startIndex := (userBalances.steps - 1) * 10
+	endIndex := userBalances.steps * 10
+	/*if startIndex < 0 {
 		return
+	}*/
+	if endIndex > len(userBalances.balances) {
+		endIndex = len(userBalances.balances)
 	}
-	token := userBalances.balances[userBalances.currBalanceIdx-1]
-	if token.MarketCap == "" {
-		marketData, err := cfg.getMarketData(token.ContractAddress)
+	tokens := userBalances.balances[startIndex:endIndex]
+	if tokens[0].MarketCap == "" {
+		err := cfg.fetchOverviewData(tokens)
 		if err != nil {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -31,21 +35,8 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 			log.Println(err.Error())
 			return
 		}
-		token.MarketCap = marketData.MarketCap
-		token.Liquidity = marketData.Liquidity
-		token.Intervals = marketData.Intervals
-		token.Tag = marketData.Tag
 	}
-	inlineText, err := cfg.handlerShowBoughttokenPM(ctx, telegramId, token, userBalances.monBalance)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	buySellButtons, err := cfg.DB.GetBuySellButtons(ctx, telegramId)
+	inlineText, err := cfg.constructOverviewString(ctx, tokens, telegramId, startIndex, userBalances.totalPortFolioValue, userBalances.monBalance, len(userBalances.balances))
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.CallbackQuery.Message.Message.Chat.ID,
@@ -60,20 +51,8 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 				{Text: "Home 🏠︎", CallbackData: "positions_home"},
 				{Text: "Close ❌", CallbackData: "positions_close"},
 			}, {
-				{Text: token.Symbol, CallbackData: "positions_symbol"},
-			}, {
 				{Text: "◀️ Prev", CallbackData: "positions_prev"},
 				{Text: "Next ▶️", CallbackData: "positions_next"},
-			}, {
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonLeft)), CallbackData: "positions_buyLeft"},
-				{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(buySellButtons.BuyButtonRight)), CallbackData: "positions_buyRight"},
-				{Text: "Buy X MON", CallbackData: "positions_buyX"},
-			}, {
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonLeft), CallbackData: "positions_sellLeft"},
-				{Text: fmt.Sprintf("Sell %v%%", buySellButtons.SellButtonRight), CallbackData: "positions_sellRight"},
-				{Text: "Sell X %", CallbackData: "positions_sellX"},
-			}, {
-				{Text: "Refresh ⟳", CallbackData: "positions_refresh"},
 			},
 		},
 	}
@@ -86,7 +65,13 @@ func (cfg *apiConfig) handlerPrev(ctx context.Context, b *bot.Bot, update *model
 	})
 	cfg.userBalancesMu.Lock()
 	ub := cfg.usersBalances[telegramID(telegramId)]
-	ub.balances[ub.currBalanceIdx-1] = token
-	ub.currBalanceIdx -= 1
+	idx := 0
+	for i := startIndex; i < endIndex; i++ {
+		ub.balances[i] = tokens[idx]
+		idx++
+	}
+	if startIndex > 0 {
+		ub.steps--
+	}
 	cfg.userBalancesMu.Unlock()
 }
