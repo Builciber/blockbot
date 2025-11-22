@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/big"
 	"slices"
-	"strconv"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -32,7 +31,7 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		log.Println(err.Error())
 		return
 	}
-	tokens, netWorth, err := cfg.getWalletTokens(walletAddress)
+	tokens, _, err := cfg.getWalletTokens(walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -41,7 +40,7 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		log.Println(err.Error())
 		return
 	}
-	tokens, err = cfg.fillMissingPriceData(tokens)
+	tokens, netWorth, err := cfg.fillMissingPriceData(tokens)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -96,9 +95,8 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		log.Println(err.Error())
 		return
 	}
-	netWorthString := strconv.FormatFloat(netWorth, byte('f'), 2, 64)
 	startIndex := 0
-	inlineText, err := cfg.constructOverviewString(ctx, viewablePositions, telegramId, startIndex, netWorthString, monBalance, len(viewablePositions))
+	inlineText, err := cfg.constructOverviewString(ctx, viewablePositions, telegramId, startIndex, netWorth, monBalance, len(viewablePositions))
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -144,7 +142,7 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		currBalanceIdx:      0,
 		steps:               1,
 		monBalance:          monBalance,
-		totalPortFolioValue: netWorthString,
+		totalPortFolioValue: netWorth,
 	}
 	cfg.userBalancesMu.Unlock()
 }
