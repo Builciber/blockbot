@@ -536,11 +536,15 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 }
 
 func abbreviateDecimal(decimal string) string {
-	if decimal[0] == '0' {
+	integralPart := strings.Split(decimal, ".")[0]
+	absoluteValue := integralPart
+	if integralPart[0] == '-' {
+		absoluteValue = integralPart[1:]
+	}
+	if absoluteValue == "0" {
 		return decimal
 	}
-	integralPart := strings.Split(decimal, ".")[0]
-	if len(integralPart) < 4 {
+	if len(absoluteValue) < 4 {
 		return decimal
 	}
 	units := map[int]string{
@@ -551,7 +555,7 @@ func abbreviateDecimal(decimal string) string {
 		15: "Qa",
 		18: "Qi",
 	}
-	powerOfTen := len(integralPart) - 1
+	powerOfTen := len(absoluteValue) - 1
 	rem := powerOfTen % 3
 	unit := units[powerOfTen-rem]
 	float, _ := new(big.Float).SetString(integralPart)
