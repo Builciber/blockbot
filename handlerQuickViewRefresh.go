@@ -25,7 +25,7 @@ func (cfg *apiConfig) handlerQuickViewRefresh(ctx context.Context, b *bot.Bot, u
 	splits := strings.Split(msg.Text, "|")
 	withTokenAddress := strings.TrimPrefix(splits[2], " ")
 	tokenAddress := withTokenAddress[0:42]
-	tokenSymbol := splits[1]
+	tokenSymbol := splits[0]
 	token, err := cfg.getToken(tokenAddress, walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
