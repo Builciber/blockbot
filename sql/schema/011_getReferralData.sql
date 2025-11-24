@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE OR REPLACE FUNCTION getReferralData(telegramId BIGINT, OUT referralCode CHAR(8), OUT referralCount INTEGER, OUT referralEarnings NUMERIC)
+CREATE OR REPLACE FUNCTION getReferralData(telegramId BIGINT, OUT referralCode VARCHAR(8), OUT referralCount INTEGER, OUT referralEarnings NUMERIC)
 AS $$
 DECLARE
     userInfo users%ROWTYPE;

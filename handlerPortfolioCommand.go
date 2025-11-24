@@ -31,16 +31,7 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		log.Println(err.Error())
 		return
 	}
-	tokens, _, err := cfg.getWalletTokens(walletAddress)
-	if err != nil {
-		b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Something went wrong, please try again",
-		})
-		log.Println(err.Error())
-		return
-	}
-	tokens, netWorth, err := cfg.fillMissingPriceData(tokens)
+	tokens, portValue, err := cfg.getWalletTokens(walletAddress)
 	if err != nil {
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
@@ -61,7 +52,16 @@ func (cfg *apiConfig) handlerPortfolioCommand(ctx context.Context, b *bot.Bot, u
 		})
 		return
 	}
-	var monBalance string
+	tokens, netWorth, err := cfg.fillMissingPriceData(tokens, portValue)
+	if err != nil {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Something went wrong, please try again",
+		})
+		log.Println(err.Error())
+		return
+	}
+	monBalance := "0.00"
 	for _, token := range tokens {
 		if token.ContractAddress == zeroAddress {
 			monBalance = token.Balance

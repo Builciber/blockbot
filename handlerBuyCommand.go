@@ -129,7 +129,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		compoundImpactFormatted = strings.Replace(formatFloat(compoundImpactAsFloat, 3), ".", "\\.", 1)
 	}
 	balanceFormatted := strings.Replace(formatFloat(balanceAsFloat, 3), ".", "\\.", 1)
-	if token.Price == "0" || token.Price == "" {
+	if (token.Price == "0" || token.Price == "") && token.Tag == "" {
 		keyboard = &models.InlineKeyboardMarkup{
 			InlineKeyboard: [][]models.InlineKeyboardButton{
 				{

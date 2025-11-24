@@ -232,7 +232,7 @@ func (cfg *apiConfig) getNadfunTokenPrices(tokenAddresses []string) (map[string]
 	return tokenAddressToPrices, nil
 }
 
-func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, string, error) {
+func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue float64) ([]Token, string, error) {
 	tokenAddresses := []string{}
 	addressToPrice := make(map[string]string)
 	for _, token := range tokens {
@@ -241,8 +241,9 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, string, err
 			addressToPrice[token.ContractAddress] = ""
 		}
 	}
+	portfolioValue := big.NewFloat(currentPortValue)
 	if len(tokenAddresses) == 0 {
-		return tokens, "", nil
+		return tokens, portfolioValue.Text(byte('f'), 2), nil
 	}
 	/*addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
 	if err != nil {
@@ -252,7 +253,6 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, string, err
 	if err != nil {
 		return nil, "", err
 	}
-	portfolioValue := big.NewFloat(0)
 	for i := range tokens {
 		if price := addressToPrice[tokens[i].ContractAddress]; price != "" {
 			monPriceAsFloat, _ := new(big.Float).SetString(monPrice)
@@ -263,12 +263,8 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token) ([]Token, string, err
 			tokenUsdValue.Mul(balance, tokenUsdPrice)
 			tokens[i].Price = tokenUsdPrice.Text(byte('f'), -1)
 			tokens[i].UsdValue = tokenUsdValue.Text(byte('f'), -1)
+			portfolioValue.Add(portfolioValue, tokenUsdValue)
 		}
-		value, ok := new(big.Float).SetString(tokens[i].UsdValue)
-		if !ok {
-			continue
-		}
-		portfolioValue.Add(portfolioValue, value)
 	}
 	return tokens, portfolioValue.Text(byte('f'), 2), nil
 }
