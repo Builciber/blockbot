@@ -76,7 +76,7 @@ func stringToPGNumeric(str string) (pgtype.Numeric, error) {
 }
 
 func getMONUSDPrice() (string, error) {
-	url := "https://testnet-api.monorail.xyz/v1/symbol/MONUSD"
+	url := "https://api.monorail.xyz/v2/symbol/MONUSD"
 	res, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -98,7 +98,7 @@ func getMONUSDPrice() (string, error) {
 }
 
 func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBalancesResp, error) {
-	url := fmt.Sprintf("https://testnet-api.monorail.xyz/v1/tokens?find=%s&address=%s", tokenAddress, walletAddress)
+	url := fmt.Sprintf("https://api.monorail.xyz/v2/tokens?find=%s&address=%s", tokenAddress, walletAddress)
 	res, err := http.Get(url)
 	if err != nil {
 		return monorailBalancesResp{}, err
