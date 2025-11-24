@@ -62,7 +62,7 @@ func (cfg *apiConfig) handlerGeneratePnlCard(ctx context.Context, b *bot.Bot, up
 			return
 		}
 		if token.Price != "" && token.Price != "0" {
-			monPrice, err := getMONUSDPrice()
+			monPrice, err := cfg.getMONUSDPrice()
 			if err != nil {
 				b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,

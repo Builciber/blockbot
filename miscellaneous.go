@@ -75,7 +75,7 @@ func stringToPGNumeric(str string) (pgtype.Numeric, error) {
 	return numeric, nil
 }
 
-func getMONUSDPrice() (string, error) {
+/*func getMONUSDPrice() (string, error) {
 	url := "https://api.monorail.xyz/v2/symbol/MONUSD"
 	res, err := http.Get(url)
 	if err != nil {
@@ -95,6 +95,15 @@ func getMONUSDPrice() (string, error) {
 		return "", err
 	}
 	return monPrice.Price, nil
+}*/
+
+func (cfg *apiConfig) getMONUSDPrice() (string, error) {
+	wrappedMonad := "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A"
+	marketData, err := cfg.getMarketData(wrappedMonad)
+	if err != nil {
+		return "", err
+	}
+	return marketData.Price, nil
 }
 
 func (cfg *apiConfig) findToken(tokenAddress, walletAddress string) (monorailBalancesResp, error) {
@@ -249,7 +258,7 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue floa
 	if err != nil {
 		return nil, err
 	}*/
-	monPrice, err := getMONUSDPrice()
+	monPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return nil, "", err
 	}
@@ -426,7 +435,7 @@ func (cfg *apiConfig) getNadfunTokenMarketData(tokenAddress string) (tokenMarket
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	monPrice, err := getMONUSDPrice()
+	monPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return tokenMarketData{}, err
 	}
@@ -661,7 +670,7 @@ func (cfg *apiConfig) constructOverviewString(ctx context.Context, tokens []Toke
 	if err != nil {
 		return "", err
 	}
-	monUsdPrice, err := getMONUSDPrice()
+	monUsdPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return "", err
 	}

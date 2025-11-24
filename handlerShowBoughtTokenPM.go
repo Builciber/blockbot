@@ -11,7 +11,7 @@ import (
 )
 
 func (cfg *apiConfig) handlerShowBoughttokenPM(ctx context.Context, telegramId int64, token Token, monBalance string) (string, error) {
-	monUsdPrice, err := getMONUSDPrice()
+	monUsdPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return "", err
 	}

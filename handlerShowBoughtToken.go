@@ -21,7 +21,7 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 		return "", err
 	}
 	monBalance := getBalanceResp.Balance
-	monUsdPrice, err := getMONUSDPrice()
+	monUsdPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return "", err
 	}
