@@ -10,7 +10,7 @@ BEGIN
 
     IF found THEN
         IF token_amount < position.total_token_amount THEN
-            UPDATE positions SET total_mon_cost = ROUND(total_mon_cost - (token_amount * (total_mon_cost / position.total_token_amount)), 7), total_token_amount = total_token_amount - token_amount, updated_at = NOW()::TIMESTAMP
+            UPDATE positions SET total_mon_cost = total_mon_cost - (token_amount * (total_mon_cost / position.total_token_amount)), total_token_amount = total_token_amount - token_amount, updated_at = NOW()::TIMESTAMP
             WHERE trader = traderId AND token_address = tokenAddress;
         ELSE
             DELETE FROM positions

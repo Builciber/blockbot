@@ -129,17 +129,43 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 		compoundImpactFormatted = strings.Replace(formatFloat(compoundImpactAsFloat, 3), ".", "\\.", 1)
 	}
 	balanceFormatted := strings.Replace(formatFloat(balanceAsFloat, 3), ".", "\\.", 1)
-	if (token.Price == "0" || token.Price == "") && token.Tag == "" {
-		keyboard = &models.InlineKeyboardMarkup{
-			InlineKeyboard: [][]models.InlineKeyboardButton{
-				{
-					{Text: "Close", CallbackData: "buy_close"},
+	if token.Price == "0" || token.Price == "" {
+		if token.Tag == "" {
+			keyboard = &models.InlineKeyboardMarkup{
+				InlineKeyboard: [][]models.InlineKeyboardButton{
+					{
+						{Text: "Close", CallbackData: "buy_close"},
+					},
 				},
-			},
+			}
+			inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+			if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
+				inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
+			}
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID:      msg.Chat.ID,
+				ParseMode:   models.ParseModeMarkdown,
+				Text:        inlineText,
+				ReplyMarkup: keyboard,
+			})
+			return
 		}
-		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nLaunchpad token detected\nHome launchpad: *%s*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, token.Tag, balanceFormatted, token.ContractAddress)
 		if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
 			inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
+		}
+		keyboard := &models.InlineKeyboardMarkup{
+			InlineKeyboard: [][]models.InlineKeyboardButton{
+				{
+					{Text: "Close ❌", CallbackData: "buy_close"},
+				}, {
+					{Text: token.Symbol, CallbackData: "buy_symbol"},
+				}, {
+					{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(params.BuyButtonLeft)), CallbackData: "buy_buyLeft"},
+					{Text: fmt.Sprintf("Buy %v MON", pgNumericToString(params.BuyButtonRight)), CallbackData: "buy_buyRight"},
+					{Text: "Buy X MON", CallbackData: "buy_buyX"},
+				},
+			},
 		}
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      msg.Chat.ID,
@@ -218,7 +244,7 @@ type monorailPathFinderResp struct {
 
 func (cfg *apiConfig) getCompoundImpactAndMonBalance(telegramId int64, forAmount, tokenAddress string) (string, string, error) {
 	fromAddress := "0x0000000000000000000000000000000000000000"
-	url := fmt.Sprintf("https://testnet-pathfinder-v2.monorail.xyz/v4/quote?amount=%s&from=%s&to=%s&source=%s", forAmount, fromAddress, tokenAddress, cfg.monorailAppId)
+	url := fmt.Sprintf("https://pathfinder.monorail.xyz/v4/quote?amount=%s&from=%s&to=%s&source=%s", forAmount, fromAddress, tokenAddress, cfg.monorailAppId)
 	res, err := http.Get(url)
 	if err != nil {
 		return "", "", err
