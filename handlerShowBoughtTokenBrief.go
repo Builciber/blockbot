@@ -50,6 +50,6 @@ func (cfg *apiConfig) handlerShowBoughtTokenBrief(token *Token, position databas
 	interval1HourFormatted := replacer.Replace(formatPnl(displayDecimal(token.Intervals.Interval1Hour.PriceChange, 2)))
 	interval4HourFormatted := replacer.Replace(formatPnl(displayDecimal(token.Intervals.Interval4Hour.PriceChange, 2)))
 	interval24HourFormatted := replacer.Replace(formatPnl(displayDecimal(token.Intervals.Interval24Hour.PriceChange, 2)))
-	inlineText := fmt.Sprintf("%d\\. [*%s*](https://t.me/Monad_TestBlockBot?start=position_%d)\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\n", serial, escapeMarkdown(token.Symbol), serial-1, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted)
+	inlineText := fmt.Sprintf("%d\\. [*%s*](https://t.me/Monad_BlockBot?start=position_%d)\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\n", serial, escapeMarkdown(token.Symbol), serial-1, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted)
 	builder.WriteString(inlineText)
 }
