@@ -122,7 +122,7 @@ func main() {
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
 
-	b.StartWebhook(ctx)
+	go b.StartWebhook(ctx)
 
 	server := http.Server{
 		Addr:    "0.0.0.0:8080",
