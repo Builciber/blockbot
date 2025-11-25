@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/Builciber/blockbot/internal/database"
@@ -121,12 +122,12 @@ func main() {
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
 
-	b.Start(ctx)
+	b.StartWebhook(ctx)
 
-	/*server := http.Server{
+	server := http.Server{
 		Addr:    "0.0.0.0:8080",
 		Handler: mux,
 	}
 	log.Println("Started server on localhost at port 8080")
-	server.ListenAndServe()*/
+	server.ListenAndServe()
 }
