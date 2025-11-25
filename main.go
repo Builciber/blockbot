@@ -95,7 +95,8 @@ func main() {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
 		bot.WithWebhookSecretToken(tgWebhookSecret),
-		bot.WithWorkers(1024),
+		bot.WithWorkers(10000),
+		bot.WithUpdatesChannelCap(10000),
 	}
 
 	b, err := bot.New(cfg.botToken, opts...)
