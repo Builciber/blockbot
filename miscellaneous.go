@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -29,7 +30,7 @@ type monorailBalancesResp struct {
 	Address     string   `json:"address"`
 	Balance     string   `json:"balance"`
 	Categories  []string `json:"categories"`
-	Decimals    string   `json:"decimals"`
+	Decimals    int      `json:"decimals"`
 	MonPerToken string   `json:"mon_per_token"`
 	MonValue    string   `json:"mon_value"`
 	Name        string   `json:"name"`
@@ -99,7 +100,7 @@ func stringToPGNumeric(str string) (pgtype.Numeric, error) {
 
 func (cfg *apiConfig) getMONUSDPrice() (string, error) {
 	wrappedMonad := "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A"
-	marketData, err := cfg.getMarketData(wrappedMonad)
+	marketData, err := cfg.getTokenMarketDataBlockVision(wrappedMonad)
 	if err != nil {
 		return "", err
 	}
@@ -200,14 +201,19 @@ func (cfg *apiConfig) getNadfunTokenPrice(tokenAddress string) (string, error) {
 		}
 		return "", fmt.Errorf("failed to fetch Nadfun token price for %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
-	price := NadfunTokenPrice{}
+	price := nadFunMarketInfo{}
 	err = json.Unmarshal(body, &price)
 	if err != nil {
 		return "", err
 	}
-	return price.Price, nil
+	return price.MarketInfo.Price, nil
 }
 
+type nadFunMarketInfo struct {
+	MarketInfo struct {
+		Price string `json:"price"`
+	} `json:"market_info"`
+}
 type tokenPrice struct {
 	token string
 	price string
@@ -254,10 +260,10 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue floa
 	if len(tokenAddresses) == 0 {
 		return tokens, portfolioValue.Text(byte('f'), 2), nil
 	}
-	/*addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
+	addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
 	if err != nil {
-		return nil, err
-	}*/
+		return nil, "", err
+	}
 	monPrice, err := cfg.getMONUSDPrice()
 	if err != nil {
 		return nil, "", err
@@ -360,7 +366,7 @@ type nadfunTokenPriceChange struct {
 }
 
 func (cfg *apiConfig) getNadfunTokenPriceChange(tokenAddress, interval string) (nadfunTokenPriceChange, error) {
-	url := fmt.Sprintf("%s/trade/metrics/%s?timeframe=%s", cfg.nadfunApiOrigin, tokenAddress, interval)
+	url := fmt.Sprintf("%s/trade/metrics/%s?timeframes=%s", cfg.nadfunApiOrigin, tokenAddress, interval)
 	res, err := http.Get(url)
 	if err != nil {
 		return nadfunTokenPriceChange{}, err
@@ -382,7 +388,7 @@ func (cfg *apiConfig) getNadfunTokenPriceChange(tokenAddress, interval string) (
 }
 
 func (cfg *apiConfig) getNadfunTokenPriceChanges(tokenAddress string) (map[string]nadfunTokenPriceChange, error) {
-	intervals := []string{"30", "60", "4H", "D"}
+	intervals := []string{"30", "60", "240", "1D"}
 	priceChangeChan := make(chan nadfunTokenPriceChange, len(intervals))
 	errChan := make(chan error)
 	intervalToPriceChange := make(map[string]nadfunTokenPriceChange)
@@ -435,18 +441,15 @@ func (cfg *apiConfig) getNadfunTokenMarketData(tokenAddress string) (tokenMarket
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	monPrice, err := cfg.getMONUSDPrice()
-	if err != nil {
-		return tokenMarketData{}, err
-	}
 	intervalToPriceChange, err := cfg.getNadfunTokenPriceChanges(tokenAddress)
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	monPriceAsFloat, _ := new(big.Float).SetString(monPrice)
-	priceAsFloat, _ := new(big.Float).SetString(tokenPrice)
-	tokenUsdPrice := new(big.Float)
-	tokenUsdPrice.Mul(monPriceAsFloat, priceAsFloat)
+	log.Println(tokenAddress)
+	if tokenPrice != "" {
+
+	}
+	tokenUsdPrice, _ := new(big.Float).SetString(tokenPrice)
 	marketCap, _ := new(big.Float).SetString(onchainData.TokenSupply)
 	marketCap.Mul(tokenUsdPrice, marketCap)
 	intervals := struct {
@@ -517,7 +520,7 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 			return Token{}, err
 		}
 	}*/
-	marketData, err = cfg.getTokenMarketDataBlockVision(onchainData.TokenAddress)
+	marketData, err = cfg.getTokenMarketDataBlockVision(tokenAddress)
 	if err != nil {
 		return Token{}, err
 	}

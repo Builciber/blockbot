@@ -138,7 +138,7 @@ func (cfg *apiConfig) handlerBuyCommand(ctx context.Context, b *bot.Bot, msg *mo
 					},
 				},
 			}
-			inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+			inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *N/A*\nPrice Impact \\(%s MON\\): *N/A*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadexplorer.com/token/%s)", escapeMarkdown(token.Name), escapeMarkdown(token.Symbol), token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
 			if ok, _ := regexp.MatchString(`^0x[0-9a-fA-F]{40}$`, tokenIdentifier); !ok {
 				inlineText = inlineText + "\n\n*Proceed with caution: Multiple tokens can have the same names and symbols\\.*"
 			}
