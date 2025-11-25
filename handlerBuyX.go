@@ -137,7 +137,7 @@ func (cfg *apiConfig) handlerProcessBuyX(ctx context.Context, b *bot.Bot, msg *m
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    msg.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(buyResult.BoughtAmount, 3), ".", "\\.", 1), escapeMarkdown(token.Symbol), strings.Replace(displayDecimal(msg.Text, 3), ".", "\\.", 1), buyResult.TxHash),
+		Text:      fmt.Sprintf("Purchase successful: Bought *%v %s* for *%v MON*\n[View on the explorer](https://monadvision.com/tx/%s)", strings.Replace(displayDecimal(buyResult.BoughtAmount, 3), ".", "\\.", 1), escapeMarkdown(token.Symbol), strings.Replace(displayDecimal(msg.Text, 3), ".", "\\.", 1), buyResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     msg.Chat.ID,

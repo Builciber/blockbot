@@ -117,7 +117,7 @@ func (cfg *apiConfig) handlerProcessQuickViewSellX(ctx context.Context, b *bot.B
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:    msg.Chat.ID,
 		ParseMode: models.ParseModeMarkdown,
-		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://testnet.monadexplorer.com/tx/%s)", strings.Replace(displayDecimal(saleResult.SoldAmount, 3), ".", "\\.", 1), escapeMarkdown(tokenSymbol), strings.Replace(displayDecimal(saleResult.ReceivedMon, 3), ".", "\\.", 1), saleResult.TxHash),
+		Text:      fmt.Sprintf("Sale successful: Sold *%v %s* for *%v MON*\n[View on the explorer](https://monadvision.com/tx/%s)", strings.Replace(displayDecimal(saleResult.SoldAmount, 3), ".", "\\.", 1), escapeMarkdown(tokenSymbol), strings.Replace(displayDecimal(saleResult.ReceivedMon, 3), ".", "\\.", 1), saleResult.TxHash),
 	})
 	b.DeleteMessages(ctx, &bot.DeleteMessagesParams{
 		ChatID:     msg.Chat.ID,

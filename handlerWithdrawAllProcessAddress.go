@@ -68,7 +68,7 @@ func (cfg *apiConfig) handlerWithdrawAllProcessAddress(ctx context.Context, b *b
 		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    msg.Chat.ID,
 			ParseMode: models.ParseModeMarkdown,
-			Text:      fmt.Sprintf("✅✅✅✅\n\nWithdrawal Successful: [View on Monad explorer](https://testnet\\.monadexplorer\\.com/tx/%s)", withdrawResp.TxHash),
+			Text:      fmt.Sprintf("✅✅✅✅\n\nWithdrawal Successful: [View on Monad explorer](https://monadvision\\.com/tx/%s)", withdrawResp.TxHash),
 			ReplyParameters: &models.ReplyParameters{
 				MessageID:                msg.ID,
 				AllowSendingWithoutReply: true,
@@ -86,7 +86,7 @@ func (cfg *apiConfig) handlerWithdrawAllProcessAddress(ctx context.Context, b *b
 		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:    msg.Chat.ID,
 			ParseMode: models.ParseModeMarkdown,
-			Text:      fmt.Sprintf("❌❌❌❌\n\nWithdrawal Failed: [View on Monad Explorer](https://testnet\\.monadexplorer\\.com/tx/%s)", withdrawResp.TxHash),
+			Text:      fmt.Sprintf("❌❌❌❌\n\nWithdrawal Failed: [View on Monad Explorer](https://monadvision\\.com/tx/%s)", withdrawResp.TxHash),
 			ReplyParameters: &models.ReplyParameters{
 				MessageID:                msg.ID,
 				AllowSendingWithoutReply: true,

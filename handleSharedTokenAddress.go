@@ -86,7 +86,7 @@ func (cfg *apiConfig) handleSharedTokenAddress(ctx context.Context, b *bot.Bot, 
 				},
 			},
 		}
-		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s)", token.Name, token.Symbol, token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$0\\.00*\nPrice Impact \\(%s MON\\): *Unknown*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadvision.com/token/%s)", token.Name, token.Symbol, token.ContractAddress, buyButtonRight, balanceFormatted, token.ContractAddress)
 		b.SendMessage(ctx, &bot.SendMessageParams{
 			ChatID:      chatId,
 			ParseMode:   models.ParseModeMarkdown,
@@ -106,7 +106,7 @@ func (cfg *apiConfig) handleSharedTokenAddress(ctx context.Context, b *bot.Bot, 
 		liquidityFieldValue = fmt.Sprintf("%s %s", liquidityFormatted, token.Symbol)
 		launchpad = "Nadfun"
 	}
-	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://testnet.monadexplorer.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", bot.EscapeMarkdown(token.Name), bot.EscapeMarkdown(token.Symbol), token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
+	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| *`%s`*\n\nPrice: *$%s*\nMarket Cap: *$%s*\n%s: *%s*\nLaunchpad: *%s*\nPrice Impact \\(%s MON\\): *%s%%*\n\nWallet Balance: *%s MON*\n\n[View Token on Explorer](https://monadvision.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", bot.EscapeMarkdown(token.Name), bot.EscapeMarkdown(token.Symbol), token.ContractAddress, priceFormatted, marketCapFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, buyButtonRight, compoundImpactFormatted, balanceFormatted, token.ContractAddress, token.ContractAddress)
 	b.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID:      chatId,
 		ParseMode:   models.ParseModeMarkdown,

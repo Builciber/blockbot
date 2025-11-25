@@ -44,7 +44,7 @@ func (cfg *apiConfig) handlerWalletCommand(ctx context.Context, b *bot.Bot, upda
 	keyboard := &models.InlineKeyboardMarkup{
 		InlineKeyboard: [][]models.InlineKeyboardButton{
 			{
-				{Text: "View on Monad Explorer 🔎", URL: "https://testnet.monadexplorer.com/address/" + walletAddress},
+				{Text: "View on Monad Explorer 🔎", URL: "https://monadvision.com/address/" + walletAddress},
 				{Text: "Close ❌", CallbackData: "wallet_close"},
 			}, {
 				{Text: "Deposit MON 🏦", CallbackData: "wallet_deposit"},
