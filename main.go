@@ -95,6 +95,7 @@ func main() {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
 		bot.WithWebhookSecretToken(tgWebhookSecret),
+		bot.WithWorkers(1024),
 	}
 
 	b, err := bot.New(cfg.botToken, opts...)
@@ -122,6 +123,13 @@ func main() {
 	mux := chi.NewRouter()
 	mux.Post("/webhooks/telegram", b.WebhookHandler())
 
+	/*ok, _ := b.SetWebhook(ctx, &bot.SetWebhookParams{
+		URL:         "https://blockbot-p7u8.onrender.com/webhooks/telegram",
+		SecretToken: tgWebhookSecret,
+	})
+	if !ok {
+		log.Println("failed")
+	}*/
 	go b.StartWebhook(ctx)
 
 	server := http.Server{
