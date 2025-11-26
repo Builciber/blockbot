@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"net/http"
 	_ "net/http/pprof"
 
 	"github.com/Builciber/blockbot/internal/database"
@@ -131,12 +130,12 @@ func main() {
 	if !ok {
 		log.Println("failed")
 	}*/
-	go b.StartWebhook(ctx)
+	b.Start(ctx)
 
-	server := http.Server{
+	/*server := http.Server{
 		Addr:    "0.0.0.0:8080",
 		Handler: mux,
 	}
 	log.Println("Started server on localhost at port 8080")
-	server.ListenAndServe()
+	server.ListenAndServe()*/
 }
