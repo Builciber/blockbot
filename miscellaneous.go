@@ -335,6 +335,9 @@ func displayDecimal(decimal string, precision int) string {
 }
 
 func formatFloat(float *big.Float, precision int) string {
+	if float == nil {
+		return ""
+	}
 	scientificNotation := float.Text(byte('e'), precision)
 	roundedDecimal := float.Text(byte('f'), precision)
 	split := strings.Split(scientificNotation, "e")
