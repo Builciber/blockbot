@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -38,10 +39,16 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 		initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
 	}
 	if token.Price != "" && token.Price != "0" {
-		tokenUsdPrice, _ := new(big.Float).SetString(token.Price)
+		tokenUsdPrice, ok := new(big.Float).SetString(token.Price)
+		if !ok {
+			return "", errors.New("showBoughtToken: failed to parse token price as big.Float")
+		}
 		currPricePerToken := new(big.Float)
 		currPricePerToken.Quo(tokenUsdPrice, MonUsdPrice) //price of token in MON
-		tokenBalance, _ := new(big.Float).SetString(token.Balance)
+		tokenBalance, ok := new(big.Float).SetString(token.Balance)
+		if !ok {
+			return "", errors.New("showBoughtToken: failed to parse balance as big.Float")
+		}
 		monValue := new(big.Float).Mul(currPricePerToken, tokenBalance)
 		monValueFormatted = strings.Replace(formatFloat(monValue, 3), ".", "\\.", 1)
 		usdValueFormatted = strings.Replace(displayDecimal(token.UsdValue, 2), ".", "\\.", 1)
@@ -70,7 +77,10 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 			return "", err
 		}
 	}
-	tokenBalance, _ := new(big.Float).SetString(token.Balance)
+	tokenBalance, ok := new(big.Float).SetString(token.Balance)
+	if !ok {
+		return "", errors.New("showBoughtToken: failed to parse balance as big.Float")
+	}
 	tokenBalanceFormatted := strings.Replace(formatFloat(tokenBalance, 4), ".", "\\.", 1)
 	monBalanceAsFloat, _ := new(big.Float).SetString(monBalance)
 	monBalanceFormatted := strings.Replace(formatFloat(monBalanceAsFloat, 4), ".", "\\.", 1)
@@ -83,11 +93,11 @@ func (cfg *apiConfig) showBoughtToken(ctx context.Context, telegramId int64, tok
 	interval24HourFormatted := replacer.Replace(formatPnl(displayDecimal(token.Intervals.Interval24Hour.PriceChange, 2)))
 	liquidityFieldKey := "Liquidity"
 	liquidityFieldValue := "$" + liquidityFormatted
-	launchpad := "None"
-	if token.Tag == "Nadfun" {
-		liquidityFieldKey = "TokensInBondingCurve"
-		liquidityFieldValue = fmt.Sprintf("%s %s", liquidityFormatted, token.Symbol)
-		launchpad = "Nadfun"
+	launchpad := "none"
+	if token.Tag != "" {
+		launchpad = token.Tag
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\nLaunchpad: *%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\n\n[*View Token on Explorer*](https://monadvision.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", escapeMarkdown(token.Symbol), escapeMarkdown(token.Name), token.ContractAddress, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, launchpad, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, token.ContractAddress, token.ContractAddress)
+		return inlineText, nil
 	}
 	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\n%s: *%s*\nLaunchpad: *%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\n\n[*View Token on Explorer*](https://monadvision.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s)", escapeMarkdown(token.Symbol), escapeMarkdown(token.Name), token.ContractAddress, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, token.ContractAddress, token.ContractAddress)
 	return inlineText, nil

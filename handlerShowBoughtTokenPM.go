@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -28,13 +29,22 @@ func (cfg *apiConfig) handlerShowBoughttokenPM(ctx context.Context, telegramId i
 		initialCostFormatted = strings.Replace(formatFloat(initialMonCost, 4), ".", "\\.", 1)
 	}
 	if token.Price != "" && token.Price != "0" {
-		tokenUsdPrice, _ := new(big.Float).SetString(token.Price)
+		tokenUsdPrice, ok := new(big.Float).SetString(token.Price)
+		if !ok {
+			return "", errors.New("handlerShowBoughttokenPM: failed to parse token USD price as *big.Float")
+		}
 		currPricePerToken := new(big.Float)
 		currPricePerToken.Quo(tokenUsdPrice, MonUsdPrice) //price of token in MON
-		tokenBalance, _ := new(big.Float).SetString(token.Balance)
+		tokenBalance, ok := new(big.Float).SetString(token.Balance)
+		if !ok {
+			return "", errors.New("handlerShowBoughttokenPM: failed to parse token balance as *big.Float")
+		}
 		monValue := new(big.Float).Mul(currPricePerToken, tokenBalance)
 		monValueFormatted = strings.Replace(formatFloat(monValue, 3), ".", "\\.", 1)
-		usdValueAsFloat, _ := new(big.Float).SetString(token.UsdValue)
+		usdValueAsFloat, ok := new(big.Float).SetString(token.UsdValue)
+		if !ok {
+			return "", errors.New("handlerShowBoughttokenPM: failed to parse token USD value as *big.Float")
+		}
 		usdValueFormatted = strings.Replace(formatFloat(usdValueAsFloat, 2), ".", "\\.", 1)
 		priceFormatted = strings.Replace(displayDecimal(token.Price, 4), ".", "\\.", 1)
 		if err == nil {
@@ -63,7 +73,10 @@ func (cfg *apiConfig) handlerShowBoughttokenPM(ctx context.Context, telegramId i
 	}
 	tokenBalance, _ := new(big.Float).SetString(token.Balance)
 	tokenBalanceFormatted := strings.Replace(formatFloat(tokenBalance, 4), ".", "\\.", 1)
-	monBalanceAsFloat, _ := new(big.Float).SetString(monBalance)
+	monBalanceAsFloat, ok := new(big.Float).SetString(monBalance)
+	if !ok {
+		return "", errors.New("handlerShowBoughttokenPM: failed to parse MON balance as *big.Float")
+	}
 	monBalanceFormatted := strings.Replace(formatFloat(monBalanceAsFloat, 4), ".", "\\.", 1)
 	marketCapFormatted := strings.Replace(displayDecimal(token.MarketCap, 2), ".", "\\.", 1)
 	liquidityFormatted := strings.Replace(displayDecimal(token.Liquidity, 4), ".", "\\.", 1)
@@ -74,11 +87,11 @@ func (cfg *apiConfig) handlerShowBoughttokenPM(ctx context.Context, telegramId i
 	interval24HourFormatted := replacer.Replace(formatPnl(displayDecimal(token.Intervals.Interval24Hour.PriceChange, 2)))
 	liquidityFieldKey := "Liquidity"
 	liquidityFieldValue := "$" + liquidityFormatted
-	launchpad := "None"
-	if token.Tag == "Nadfun" {
-		liquidityFieldKey = "TokensInBondingCurve"
-		liquidityFieldValue = fmt.Sprintf("%s %s", liquidityFormatted, token.Symbol)
-		launchpad = "Nadfun"
+	launchpad := "none"
+	if token.Tag != "" {
+		launchpad = token.Tag
+		inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\nLaunchpad: *%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\n\n[*View Token on Explorer*](https://monadvision.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s) \\| [*PnL Card*](https://t.me/Monad_BlockBot?start=pnlcard_%s)", escapeMarkdown(token.Symbol), escapeMarkdown(token.Name), token.ContractAddress, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, launchpad, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, token.ContractAddress, token.ContractAddress, token.ContractAddress)
+		return inlineText, nil
 	}
 	inlineText := fmt.Sprintf("*%s* \\| *%s* \\| `%s`\n\nPnL: *%s%% / %s MON*\nValue: *$%s / %s MON*\nMcap: *$%s*\nPrice: *$%s*\n%s: *%s*\nLaunchpad: *%s*\n30m: *%s%%*, 1h: *%s%%*, 4h: *%s%%*, 24h: *%s%%*\n\nInitial: *%s MON*\nToken Balance: *%s %s*\nWallet Balance: *%s MON*\n\n[*View Token on Explorer*](https://monadvision.com/token/%s) \\| [*Share Token*](https://t.me/Monad_BlockBot?start=st_%s) \\| [*PnL Card*](https://t.me/Monad_BlockBot?start=pnlcard_%s)", escapeMarkdown(token.Symbol), escapeMarkdown(token.Name), token.ContractAddress, pnlPercentFormatted, pnlFormatted, usdValueFormatted, monValueFormatted, marketCapFormatted, priceFormatted, liquidityFieldKey, liquidityFieldValue, launchpad, interval30MinFormatted, interval1HourFormatted, interval4HourFormatted, interval24HourFormatted, initialCostFormatted, tokenBalanceFormatted, token.Symbol, monBalanceFormatted, token.ContractAddress, token.ContractAddress, token.ContractAddress)
 	return inlineText, nil

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -211,7 +210,7 @@ func (cfg *apiConfig) getNadfunTokenPrice(tokenAddress string) (string, error) {
 
 type nadFunMarketInfo struct {
 	MarketInfo struct {
-		Price string `json:"price"`
+		Price string `json:"token_price"`
 	} `json:"market_info"`
 }
 type tokenPrice struct {
@@ -264,25 +263,16 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue floa
 	if err != nil {
 		return nil, "", err
 	}
-	monPrice, err := cfg.getMONUSDPrice()
-	if err != nil {
-		return nil, "", err
-	}
 	for i := range tokens {
 		if price := addressToPrice[tokens[i].ContractAddress]; price != "" {
-			monPriceAsFloat, ok := new(big.Float).SetString(monPrice)
-			if !ok {
-				return nil, "", fmt.Errorf("unexpected string: %s", monPrice)
-			}
 			tokenUsdPrice, ok := new(big.Float).SetString(price)
 			if !ok {
-				return nil, "", fmt.Errorf("unexpected string: %s", price)
+				return nil, "", fmt.Errorf("fillMissingPriceData: failed to parse token USD price as *big.Float: %s", price)
 			}
-			tokenUsdPrice.Mul(monPriceAsFloat, tokenUsdPrice)
 			tokenUsdValue := new(big.Float)
 			balance, ok := new(big.Float).SetString(tokens[i].Balance)
 			if !ok {
-				return nil, "", fmt.Errorf("unexpected string: %s", monPrice)
+				return nil, "", fmt.Errorf("fillMissingPriceData: failed to parse token balance as *big.Float: %s", price)
 			}
 			tokenUsdValue.Mul(balance, tokenUsdPrice)
 			tokens[i].Price = tokenUsdPrice.Text(byte('f'), -1)
@@ -296,7 +286,7 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue floa
 func displayDecimal(decimal string, precision int) string {
 	float, ok := new(big.Float).SetString(decimal)
 	if !ok {
-		return ""
+		return "0"
 	}
 	scientificNotation := float.Text(byte('e'), precision)
 	roundedDecimal := float.Text(byte('f'), precision)
@@ -421,7 +411,6 @@ func (cfg *apiConfig) getNadfunTokenPriceChange(tokenAddress, interval string) (
 	if err != nil {
 		return nadfunTokenPriceChange{}, err
 	}
-	log.Println(priceChange)
 	percentAsString := strconv.FormatFloat(priceChange.Metrics[0].Percent, byte('f'), 2, 64)
 	return nadfunTokenPriceChange{
 		TimeFrame:          priceChange.Metrics[0].Timeframe,
@@ -487,17 +476,13 @@ func (cfg *apiConfig) getNadfunTokenMarketData(tokenAddress string) (tokenMarket
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	log.Println(tokenAddress)
-	if tokenPrice != "" {
-
-	}
 	tokenUsdPrice, ok := new(big.Float).SetString(tokenPrice)
 	if !ok {
-		return tokenMarketData{}, fmt.Errorf("unexpected string: %s", tokenPrice)
+		return tokenMarketData{}, fmt.Errorf("getNadfunTokenMarketData: failed to parse token USD price *big.Float: %s", tokenPrice)
 	}
 	marketCap, ok := new(big.Float).SetString(onchainData.TokenSupply)
 	if !ok {
-		return tokenMarketData{}, fmt.Errorf("unexpected string: %s", tokenPrice)
+		return tokenMarketData{}, fmt.Errorf("getNadfunTokenMarketData: failed to parse token supply as *big.Float: %s", onchainData.TokenSupply)
 	}
 	marketCap.Mul(tokenUsdPrice, marketCap)
 	intervals := struct {
@@ -507,16 +492,16 @@ func (cfg *apiConfig) getNadfunTokenMarketData(tokenAddress string) (tokenMarket
 		Interval24Hour intervalData `json:"hour24"`
 	}{
 		Interval30Min: intervalData{
-			PriceChange: intervalToPriceChange["30m"].PriceChangePercent,
+			PriceChange: intervalToPriceChange["30"].PriceChangePercent,
 		},
 		Interval1Hour: intervalData{
-			PriceChange: intervalToPriceChange["1h"].PriceChangePercent,
+			PriceChange: intervalToPriceChange["60"].PriceChangePercent,
 		},
 		Interval4Hour: intervalData{
-			PriceChange: intervalToPriceChange["4h"].PriceChangePercent,
+			PriceChange: intervalToPriceChange["240"].PriceChangePercent,
 		},
 		Interval24Hour: intervalData{
-			PriceChange: intervalToPriceChange["1d"].PriceChangePercent,
+			PriceChange: intervalToPriceChange["1D"].PriceChangePercent,
 		},
 	}
 	marketData := tokenMarketData{
@@ -536,13 +521,13 @@ func (cfg *apiConfig) getMarketData(tokenAddress string) (tokenMarketData, error
 	if err != nil {
 		return tokenMarketData{}, err
 	}
-	/*if onchainData.Tag == "Nadfun" {
+	if onchainData.Tag == "Nadfun" {
 		marketData, err := cfg.getNadfunTokenMarketData(tokenAddress)
 		if err != nil {
 			return tokenMarketData{}, err
 		}
 		return marketData, nil
-	}*/
+	}
 	marketData, err := cfg.getTokenMarketDataBlockVision(tokenAddress)
 	if err != nil {
 		return tokenMarketData{}, err
@@ -557,7 +542,7 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 		return Token{}, err
 	}
 	var marketData tokenMarketData
-	/*if onchainData.Tag == "Nadfun" {
+	if onchainData.Tag == "Nadfun" {
 		marketData, err = cfg.getNadfunTokenMarketData(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
@@ -567,18 +552,14 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 		if err != nil {
 			return Token{}, err
 		}
-	}*/
-	marketData, err = cfg.getTokenMarketDataBlockVision(onchainData.TokenAddress)
-	if err != nil {
-		return Token{}, err
 	}
 	tokenBalance, ok := new(big.Float).SetString(onchainData.TokenBalance)
 	if !ok {
-		return Token{}, fmt.Errorf("unexpected string: %s", onchainData.TokenBalance)
+		return Token{}, fmt.Errorf("getToken: failed to parse token balance *big.Float: %s", onchainData.TokenBalance)
 	}
 	usdValue, ok := new(big.Float).SetString(marketData.Price)
 	if !ok {
-		return Token{}, fmt.Errorf("unexpected string: %s", onchainData.TokenBalance)
+		return Token{}, fmt.Errorf("getToken: failed to parse token price a: %s", marketData.Price)
 	}
 	usdValue.Mul(tokenBalance, usdValue)
 	token := Token{
@@ -622,7 +603,7 @@ func abbreviateDecimal(decimal string) string {
 	unit := units[powerOfTen-rem]
 	float, ok := new(big.Float).SetString(integralPart)
 	if !ok {
-		return ""
+		return "0"
 	}
 	divisor, _ := new(big.Float).SetString(fmt.Sprintf("1e+%d", powerOfTen-rem))
 	float.Quo(float, divisor)
@@ -739,7 +720,10 @@ func (cfg *apiConfig) constructOverviewString(ctx context.Context, tokens []Toke
 	for i := range listSize {
 		position := positions[tokenAddresses[i]]
 		serial := startIndex + i + 1
-		cfg.handlerShowBoughtTokenBrief(&tokens[i], position, monUsdPrice, serial, builder)
+		err := cfg.handlerShowBoughtTokenBrief(&tokens[i], position, monUsdPrice, serial, builder)
+		if err != nil {
+			return "", err
+		}
 	}
 	builder.WriteString(strings.ReplaceAll(fmt.Sprintf("Wallet Balance: *%s MON*\nPortfolio Size: *%d tokens*\nTotal Portfolio Value: *$%s*", displayDecimal(monBalance, 4), portfolioSize, displayDecimal(netWorth, 2)), ".", "\\."))
 	return builder.String(), nil
