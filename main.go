@@ -20,18 +20,20 @@ import (
 )
 
 type apiConfig struct {
-	bwsApiKey         string
-	botToken          string
-	bwsOrigin         string
-	monorailAppId     string
-	blockVisionApiKey string
-	nadfunApiOrigin   string
-	DB                *database.Queries
-	dbConn            *pgxpool.Pool
-	intSeqMap         map[chatID]*interactionSequence
-	usersBalances     map[telegramID]*userBalances
-	mu                *sync.RWMutex
-	userBalancesMu    *sync.RWMutex
+	bwsApiKey             string
+	botToken              string
+	bwsOrigin             string
+	monorailAppId         string
+	blockVisionApiKey     string
+	nadfunApiOrigin       string
+	telegramWebhookSecret string
+	DB                    *database.Queries
+	dbConn                *pgxpool.Pool
+	intSeqMap             map[chatID]*interactionSequence
+	usersBalances         map[telegramID]*userBalances
+	mu                    *sync.RWMutex
+	userBalancesMu        *sync.RWMutex
+	telegramUpdatesChan   chan *models.Update
 }
 
 type interactionSequence struct {
@@ -62,7 +64,7 @@ func main() {
 	apiKey := os.Getenv("BWS_API_KEY")
 	bwsOrigin := os.Getenv("BWS_ORIGIN")
 	monorailAppId := os.Getenv("MONORAIL_APP_ID")
-	tgWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
+	telegramWebhookSecret := os.Getenv("TELEGRAM_WEBHOOK_SECRET")
 	blockVisionApiKey := os.Getenv("BLOCKVISION_API_KEY")
 	nadfunApiOrigin := os.Getenv("NADFUN_API_ORIGIN")
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -77,24 +79,27 @@ func main() {
 
 	mu := &sync.RWMutex{}
 	usersBalancesMu := &sync.RWMutex{}
+	telegramUpdatesChan := make(chan *models.Update, 5120)
 	cfg := &apiConfig{
-		bwsApiKey:         apiKey,
-		botToken:          botToken,
-		bwsOrigin:         bwsOrigin,
-		monorailAppId:     monorailAppId,
-		blockVisionApiKey: blockVisionApiKey,
-		nadfunApiOrigin:   nadfunApiOrigin,
-		DB:                dbQueries,
-		dbConn:            db,
-		intSeqMap:         intSeqMap,
-		mu:                mu,
-		usersBalances:     usersBalances,
-		userBalancesMu:    usersBalancesMu,
+		bwsApiKey:             apiKey,
+		botToken:              botToken,
+		bwsOrigin:             bwsOrigin,
+		monorailAppId:         monorailAppId,
+		blockVisionApiKey:     blockVisionApiKey,
+		nadfunApiOrigin:       nadfunApiOrigin,
+		DB:                    dbQueries,
+		dbConn:                db,
+		intSeqMap:             intSeqMap,
+		mu:                    mu,
+		usersBalances:         usersBalances,
+		userBalancesMu:        usersBalancesMu,
+		telegramWebhookSecret: telegramWebhookSecret,
+		telegramUpdatesChan:   telegramUpdatesChan,
 	}
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(cfg.handlerDefault),
-		bot.WithWebhookSecretToken(tgWebhookSecret),
+		bot.WithWebhookSecretToken(telegramWebhookSecret),
 		bot.WithWorkers(10000),
 		bot.WithUpdatesChannelCap(10000),
 	}
@@ -122,16 +127,17 @@ func main() {
 
 	go cleaner(ctx, 3*time.Hour, cfg.intSeqMap, cfg.mu)
 	mux := chi.NewRouter()
-	mux.Post("/webhooks/telegram", b.WebhookHandler())
+	mux.Post("/webhooks/telegram", cfg.telegramWebhookHandler())
 
 	/*ok, _ := b.SetWebhook(ctx, &bot.SetWebhookParams{
 		URL:         "https://blockbot-p7u8.onrender.com/webhooks/telegram",
-		SecretToken: tgWebhookSecret,
+		SecretToken: telegramWebhookSecret,
 	})
 	if !ok {
 		log.Println("failed")
 	}*/
-	go b.StartWebhook(ctx)
+
+	go cfg.updatesListener(ctx, b)
 
 	server := http.Server{
 		Addr:    "0.0.0.0:8080",
