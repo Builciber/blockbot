@@ -189,14 +189,15 @@ func (cfg *apiConfig) getNadfunTokenPrice(tokenAddress string) (string, error) {
 	res.Body.Close()
 	if res.StatusCode > 299 {
 		if res.StatusCode == 500 {
-			errorResp := ErrorResp{}
+			/*errorResp := ErrorResp{}
 			err = json.Unmarshal(body, &errorResp)
 			if err != nil {
 				return "", err
 			}
 			if strings.Contains(errorResp.Error, "no rows") {
 				return "", nil
-			}
+			}*/
+			return "", nil
 		}
 		return "", fmt.Errorf("failed to fetch Nadfun token price for %s: %d status code returned", tokenAddress, res.StatusCode)
 	}
@@ -260,6 +261,10 @@ func (cfg *apiConfig) fillMissingPriceData(tokens []Token, currentPortValue floa
 		return tokens, portfolioValue.Text(byte('f'), 2), nil
 	}
 	addressToPrice, err := cfg.getNadfunTokenPrices(tokenAddresses)
+	if err != nil {
+		return nil, "", err
+	}
+	err = cfg.fillOnchainPrice(addressToPrice)
 	if err != nil {
 		return nil, "", err
 	}
@@ -458,6 +463,7 @@ type getOnchainDataResp struct {
 	TokenSymbol        string `json:"token_symbol"`
 	TokenDecimals      int    `json:"token_decimals"`
 	AvailableBuyTokens string `json:"available_buy_tokens"`
+	Price              string `json:"price"`
 	Tag                string `json:"tag"`
 }
 
@@ -514,6 +520,112 @@ func (cfg *apiConfig) getNadfunTokenMarketData(tokenAddress string) (tokenMarket
 	return marketData, nil
 }
 
+func (cfg *apiConfig) getSomethingTokenMarketData(tokenAddress string) (tokenMarketData, error) {
+	onchainData := getOnchainDataResp{}
+	zeroAddress := "0x0000000000000000000000000000000000000000"
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/onchain_data", cfg.bwsOrigin), cfg.bwsApiKey, getOnchainDataReq{tokenAddress, zeroAddress}, &onchainData)
+	if err != nil {
+		return tokenMarketData{}, err
+	}
+	monUsdprice, err := cfg.getMONUSDPrice()
+	if err != nil {
+		return tokenMarketData{}, nil
+	}
+	monUsdPriceAsFloat, ok := new(big.Float).SetString(monUsdprice)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getMarketData: failed to parse MONUSD price *big.Float: %s", monUsdprice)
+	}
+	tokenUsdPrice, ok := new(big.Float).SetString(onchainData.Price)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getMarketData: failed to parse token price *big.Float: %s", tokenUsdPrice)
+	}
+	tokenUsdPrice.Mul(tokenUsdPrice, monUsdPriceAsFloat)
+	marketCap, ok := new(big.Float).SetString(onchainData.TokenSupply)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getNadfunTokenMarketData: failed to parse token supply as *big.Float: %s", onchainData.TokenSupply)
+	}
+	marketCap.Mul(tokenUsdPrice, marketCap)
+	intervals := struct {
+		Interval30Min  intervalData `json:"m30"`
+		Interval1Hour  intervalData `json:"hour1"`
+		Interval4Hour  intervalData `json:"hour4"`
+		Interval24Hour intervalData `json:"hour24"`
+	}{
+		Interval30Min: intervalData{
+			PriceChange: "0",
+		},
+		Interval1Hour: intervalData{
+			PriceChange: "0",
+		},
+		Interval4Hour: intervalData{
+			PriceChange: "0",
+		},
+		Interval24Hour: intervalData{
+			PriceChange: "0",
+		},
+	}
+	marketData := tokenMarketData{
+		Price:     tokenUsdPrice.Text(byte('f'), -1),
+		MarketCap: marketCap.Text(byte('f'), -1),
+		Intervals: intervals,
+		Tag:       onchainData.Tag,
+	}
+	return marketData, nil
+}
+
+func (cfg *apiConfig) getPrintrTokenMarketData(tokenAddress string) (tokenMarketData, error) {
+	onchainData := getOnchainDataResp{}
+	zeroAddress := "0x0000000000000000000000000000000000000000"
+	err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/onchain_data", cfg.bwsOrigin), cfg.bwsApiKey, getOnchainDataReq{tokenAddress, zeroAddress}, &onchainData)
+	if err != nil {
+		return tokenMarketData{}, err
+	}
+	monUsdprice, err := cfg.getMONUSDPrice()
+	if err != nil {
+		return tokenMarketData{}, nil
+	}
+	monUsdPriceAsFloat, ok := new(big.Float).SetString(monUsdprice)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getMarketData: failed to parse MONUSD price *big.Float: %s", monUsdprice)
+	}
+	tokenUsdPrice, ok := new(big.Float).SetString(onchainData.Price)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getMarketData: failed to parse token price *big.Float: %s", tokenUsdPrice)
+	}
+	tokenUsdPrice.Mul(tokenUsdPrice, monUsdPriceAsFloat)
+	marketCap, ok := new(big.Float).SetString(onchainData.TokenSupply)
+	if !ok {
+		return tokenMarketData{}, fmt.Errorf("getNadfunTokenMarketData: failed to parse token supply as *big.Float: %s", onchainData.TokenSupply)
+	}
+	marketCap.Mul(tokenUsdPrice, marketCap)
+	intervals := struct {
+		Interval30Min  intervalData `json:"m30"`
+		Interval1Hour  intervalData `json:"hour1"`
+		Interval4Hour  intervalData `json:"hour4"`
+		Interval24Hour intervalData `json:"hour24"`
+	}{
+		Interval30Min: intervalData{
+			PriceChange: "0",
+		},
+		Interval1Hour: intervalData{
+			PriceChange: "0",
+		},
+		Interval4Hour: intervalData{
+			PriceChange: "0",
+		},
+		Interval24Hour: intervalData{
+			PriceChange: "0",
+		},
+	}
+	marketData := tokenMarketData{
+		Price:     tokenUsdPrice.Text(byte('f'), -1),
+		MarketCap: marketCap.Text(byte('f'), -1),
+		Intervals: intervals,
+		Tag:       onchainData.Tag,
+	}
+	return marketData, nil
+}
+
 func (cfg *apiConfig) getMarketData(tokenAddress string) (tokenMarketData, error) {
 	onchainData := getOnchainDataResp{}
 	zeroAddress := "0x0000000000000000000000000000000000000000"
@@ -528,6 +640,20 @@ func (cfg *apiConfig) getMarketData(tokenAddress string) (tokenMarketData, error
 		}
 		return marketData, nil
 	}
+	if onchainData.Tag == "Something" {
+		marketData, err := cfg.getSomethingTokenMarketData(tokenAddress)
+		if err != nil {
+			return tokenMarketData{}, err
+		}
+		return marketData, nil
+	}
+	/*if onchainData.Tag == "Printr" {
+		marketData, err := cfg.getPrintrTokenMarketData(tokenAddress)
+		if err != nil {
+			return tokenMarketData{}, err
+		}
+		return marketData, nil
+	}*/
 	marketData, err := cfg.getTokenMarketDataBlockVision(tokenAddress)
 	if err != nil {
 		return tokenMarketData{}, err
@@ -542,24 +668,37 @@ func (cfg *apiConfig) getToken(tokenAddress, walletAddress string) (Token, error
 		return Token{}, err
 	}
 	var marketData tokenMarketData
-	if onchainData.Tag == "Nadfun" {
+
+	switch onchainData.Tag {
+	case "Nadfun":
 		marketData, err = cfg.getNadfunTokenMarketData(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
 		}
-	} else {
+	case "Something":
+		marketData, err = cfg.getSomethingTokenMarketData(onchainData.TokenAddress)
+		if err != nil {
+			return Token{}, err
+		}
+	/*case "Printr":
+	marketData, err = cfg.getPrintrTokenMarketData(onchainData.TokenAddress)
+	if err != nil {
+		return Token{}, err
+	}*/
+	default:
 		marketData, err = cfg.getTokenMarketDataBlockVision(onchainData.TokenAddress)
 		if err != nil {
 			return Token{}, err
 		}
 	}
+
 	tokenBalance, ok := new(big.Float).SetString(onchainData.TokenBalance)
 	if !ok {
 		return Token{}, fmt.Errorf("getToken: failed to parse token balance *big.Float: %s", onchainData.TokenBalance)
 	}
 	usdValue, ok := new(big.Float).SetString(marketData.Price)
 	if !ok {
-		return Token{}, fmt.Errorf("getToken: failed to parse token price a: %s", marketData.Price)
+		return Token{}, fmt.Errorf("getToken: failed to parse token price: %s", marketData.Price)
 	}
 	usdValue.Mul(tokenBalance, usdValue)
 	token := Token{
@@ -727,4 +866,36 @@ func (cfg *apiConfig) constructOverviewString(ctx context.Context, tokens []Toke
 	}
 	builder.WriteString(strings.ReplaceAll(fmt.Sprintf("Wallet Balance: *%s MON*\nPortfolio Size: *%d tokens*\nTotal Portfolio Value: *$%s*", displayDecimal(monBalance, 4), portfolioSize, displayDecimal(netWorth, 2)), ".", "\\."))
 	return builder.String(), nil
+}
+
+func (cfg *apiConfig) fillOnchainPrice(tokenAddressToPrice map[string]string) error {
+	onchainDataChan := make(chan getOnchainDataResp, len(tokenAddressToPrice))
+	errChan := make(chan error)
+	zeroAddress := "0x0000000000000000000000000000000000000000"
+	tokenAddresses := make([]string, 0)
+	for tokenAddress, price := range tokenAddressToPrice {
+		if price == "" {
+			tokenAddresses = append(tokenAddresses, tokenAddress)
+		}
+	}
+	for _, tokenAddress := range tokenAddresses {
+		go func(_tokenAddress string, resultChan chan<- getOnchainDataResp, errChan chan<- error) {
+			onchainData := getOnchainDataResp{}
+			err := WalletServiceCall("GET", fmt.Sprintf("%s/v1/onchain_data", cfg.bwsOrigin), cfg.bwsApiKey, getOnchainDataReq{tokenAddress, zeroAddress}, &onchainData)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			resultChan <- onchainData
+		}(tokenAddress, onchainDataChan, errChan)
+	}
+	for i := 0; i < len(tokenAddresses); i++ {
+		select {
+		case result := <-onchainDataChan:
+			tokenAddressToPrice[result.TokenAddress] = result.Price
+		case err := <-errChan:
+			return err
+		}
+	}
+	return nil
 }
