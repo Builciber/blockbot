@@ -137,6 +137,7 @@ func main() {
 		log.Println("failed")
 	}*/
 
+	go cfg.sendShutdownMessageWorker(ctx, b)
 	go cfg.updatesListener(ctx, b)
 
 	server := http.Server{

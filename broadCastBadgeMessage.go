@@ -3,6 +3,12 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -150,4 +156,101 @@ func (cfg *apiConfig) updateFeedbackBadgeStatusTx(ctx context.Context, telegramU
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+var shutdownMessage = `Blockbot Shutdown Notice ⚠️
+
+Blockbot operations will officially shut down | Platform operations will cease.
+
+Your private key is exported in the next message. Copy and keep it safe. We strongly advise all users to move their funds to a fresh wallet as an additional security measure.
+
+[Please remember:
+Never share your private keys or seed phrase with anyone. Your wallet security is your responsibility.]
+
+Thank you to everyone who supported Blockbot.`
+
+func (cfg *apiConfig) sendShutdownMessage(ctx context.Context, b *bot.Bot) error {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/export/all", cfg.bwsOrigin), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "ApiKey "+cfg.bwsApiKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 299 {
+		errMsg := ErrorResp{}
+		err = json.Unmarshal(body, &errMsg)
+		if err != nil {
+			return err
+		}
+		return errors.New(errMsg.Error)
+	}
+	keys := []ExportWalletRespBody{}
+	err = json.Unmarshal(body, &keys)
+	if err != nil {
+		return err
+	}
+	for _, wallet := range keys {
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: wallet.TelegramID,
+			Text:   shutdownMessage,
+		})
+		if err != nil {
+			lowercase := strings.ToLower(err.Error())
+			if strings.Contains(lowercase, "bad request") || strings.Contains(lowercase, "forbidden") {
+				log.Printf("chat not found or I was blocked by user with ID %d\n", wallet.TelegramID)
+				continue
+			}
+			return err
+		}
+		_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+			ParseMode: models.ParseModeMarkdown,
+			ChatID:    wallet.TelegramID,
+			Text:      fmt.Sprintf("`%s` \\(Tap to copy\\)", wallet.PrivateKey),
+		})
+		if err != nil {
+			return err
+		}
+		b, err := json.Marshal(ReqBody{TelegramID: wallet.TelegramID})
+		if err != nil {
+			return err
+		}
+		req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/mark", cfg.bwsOrigin), bytes.NewBuffer(b))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "ApiKey "+cfg.bwsApiKey)
+		resp, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode > 299 {
+			errMsg := ErrorResp{}
+			err = json.Unmarshal(body, &errMsg)
+			if err != nil {
+				return err
+			}
+			return errors.New(errMsg.Error)
+		}
+	}
+	return nil
+}
+
+func (cfg *apiConfig) sendShutdownMessageWorker(ctx context.Context, b *bot.Bot) {
+	err := cfg.sendShutdownMessage(ctx, b)
+	if err != nil {
+		log.Printf("failed to finish sending shutdown message: %s", err.Error())
+		return
+	}
+	log.Println("finished sending shutdown message")
 }
